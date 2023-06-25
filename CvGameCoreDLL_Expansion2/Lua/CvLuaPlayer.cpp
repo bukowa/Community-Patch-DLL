@@ -29,6 +29,7 @@
 #include "../CvInternalGameCoreUtils.h"
 #include "ICvDLLUserInterface.h"
 #include "CvDllInterfaces.h"
+#include "CvDllNetMessageExt.h"
 
 #pragma warning(disable:4800 ) //forcing value to bool 'true' or 'false'
 
@@ -8563,7 +8564,7 @@ int CvLuaPlayer::lSetQuestInfluenceDisabled(lua_State* L)
 	const PlayerTypes ePlayer = (PlayerTypes) lua_tointeger(L, 2);
 	const bool bValue = lua_toboolean(L, 3);
 
-	pkPlayer->GetMinorCivAI()->SetQuestInfluenceDisabled(ePlayer, bValue);
+	NetMessageExt::Send::DoQuestInfluenceDisabled(ePlayer, pkPlayer->GetID(), bValue);
 	return 1;
 }
 //------------------------------------------------------------------------------
@@ -17474,14 +17475,14 @@ int CvLuaPlayer::lDoEventChoice(lua_State* L)
 	CvPlayer* pkPlayer = GetInstance(L);
 	const EventChoiceTypes eEventChoice = (EventChoiceTypes)lua_tointeger(L, 2);
 	const EventTypes eParentEvent = (EventTypes)luaL_optint(L, 3, NO_EVENT);
-	pkPlayer->DoEventChoice(eEventChoice, eParentEvent);
+	pkPlayer->DoEventChoice(eEventChoice, eParentEvent, true);
 	return 1;
 }
 int CvLuaPlayer::lDoStartEvent(lua_State* L)
 {
 	CvPlayer* pkPlayer = GetInstance(L);
 	const EventTypes eEvent = (EventTypes)lua_tointeger(L, 2);
-	pkPlayer->DoStartEvent(eEvent);
+	pkPlayer->DoStartEvent(eEvent, true);
 	return 1;
 }
 int CvLuaPlayer::lDoCancelEventChoice(lua_State* L)
