@@ -6014,25 +6014,16 @@ void CvDiplomacyAI::SetFriendDeclaredWarOnUs(PlayerTypes ePlayer, bool bValue)
 		SetBackstabbedBy(ePlayer, true, true);
 
 		// If they didn't backstab in reaction to our backstabbing, mark them as a serial backstabber
-		if (!GET_PLAYER(ePlayer).GetDiplomacyAI()->WasEverBackstabbedBy(GetID()) && !GET_PLAYER(ePlayer).GetDiplomacyAI()->IsUntrustworthy(GetID()))
-		{
+		if (!GET_PLAYER(ePlayer).isHuman() && !GET_PLAYER(ePlayer).GetDiplomacyAI()->WasEverBackstabbedBy(GetID()) && !GET_PLAYER(ePlayer).GetDiplomacyAI()->IsUntrustworthy(GetID()))
 			GET_PLAYER(ePlayer).GetDiplomacyAI()->SetBackstabber(true);
-		}
 	}
 	else
 	{
 		SetFriendDeclaredWarOnUsTurn(ePlayer, -1);
 
-		if (!GET_PLAYER(ePlayer).isHuman())
-		{
-			// If all backstabbing penalties for this player have expired and Loyalty > 2, reset the backstabber flag.
-			if (GetLoyalty() > 2 && GET_PLAYER(ePlayer).GetDiplomacyAI()->GetWeDeclaredWarOnFriendCount() <= 0)
-			{
-				// Not for Nuclear Gandhi :)
-				if (!IsNuclearGandhi())
-					GET_PLAYER(ePlayer).GetDiplomacyAI()->SetBackstabber(false);
-			}
-		}
+		// If all backstabbing penalties for this player have expired and Loyalty > 2 and not Nuclear Gandhi, reset the backstabber flag.
+		if (!GET_PLAYER(ePlayer).isHuman() && GET_PLAYER(ePlayer).GetDiplomacyAI()->GetLoyalty() > 2 && GET_PLAYER(ePlayer).GetDiplomacyAI()->GetWeDeclaredWarOnFriendCount() <= 0 && !GET_PLAYER(ePlayer).GetDiplomacyAI()->IsNuclearGandhi())
+			GET_PLAYER(ePlayer).GetDiplomacyAI()->SetBackstabber(false);
 	}
 }
 
@@ -9865,7 +9856,7 @@ void CvDiplomacyAI::DoUpdateConquestStats()
 		for (CvCity* pLoopCity = GET_PLAYER(eLoopPlayer).firstCity(&iLoop); pLoopCity != NULL; pLoopCity = GET_PLAYER(eLoopPlayer).nextCity(&iLoop))
 		{
 			CvPlot* pCityPlot = pLoopCity->plot();
-			if (pCityPlot == NULL || !pLoopCity->isRevealed(GetTeam(),false,true))
+			if (pCityPlot == NULL || !pLoopCity->isRevealed(GetTeam(),false,false))
 				continue;
 
 			PlayerTypes eCityOwner = pCityPlot->getOwner();
@@ -19851,7 +19842,7 @@ void CvDiplomacyAI::SelectBestApproachTowardsMajorCiv(PlayerTypes ePlayer, bool 
 						{
 							iStrengthFactor++;
 						}
-						if (IsBackstabber() && pTheirDiplo->IsBackstabber() && !bUntrustworthy) // Backstabbing conquerors like other backstabbers
+						if (IsBackstabber() && pTheirDiplo->GetWeDeclaredWarOnFriendCount() > 0 && !bUntrustworthy) // Backstabbing conquerors like other backstabbers
 						{
 							iStrengthFactor += 2;
 						}
