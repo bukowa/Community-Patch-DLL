@@ -3,9 +3,9 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Default</Configuration>
     <ProjectGuid>{0d66d522-b624-4bc5-acfe-15a0c5b729f4}</ProjectGuid>
-    <Name>(4b) UI - Promotion Tree for VP</Name>
+    <Name>(4a) UI - Promotion Tree for VP</Name>
     <Guid>1f0a153b-26ae-4496-a2c0-a106d9b43c95</Guid>
-    <ModVersion>22</ModVersion>
+    <ModVersion>23</ModVersion>
     <Stability>Stable</Stability>
     <Teaser>(3.7.3) Shows promotions as a tree</Teaser>
     <Description>Displays promotions in a tree format either for the current unit or by selecting one of the various combat classes (melee, naval, recon, siege, mounted, etc) from a drop-down menu
