@@ -11088,13 +11088,19 @@ int CvMinorCivAI::GetFriendshipChangePerTurnTimes100(PlayerTypes ePlayer)
 
 		if (MOD_BALANCE_VP)
 		{
-			//Influence decay increases the higher your influence over your resting point. >= 100 over resting point equals -1, >= 200 equals -2.82, >= 300 equals -5.2, >= 400 equals -8, >= 500 equals -11.18, and so on.
-			int iScalingInfluenceDecay = (iCurrentInfluence - iRestingPoint) / 10000;
-			if (iScalingInfluenceDecay > 0)
+			if (iCurrentInfluence - iRestingPoint >= 10000)
 			{
-				float fExponent = /*1.5*/ GD_FLOAT_GET(MINOR_INFLUENCE_SCALING_DECAY_EXPONENT);
-				double iExtraDecay = pow((double)iScalingInfluenceDecay, (double)fExponent) * -100;
-				iChangeThisTurn += (int)iExtraDecay;
+				//Influence decay increases the higher your influence over your resting point. 100 over resting point equals -1, 200 equals -2.82, 300 equals -5.2, 400 equals -8, 500 equals -11.18, and so on.
+				double dInfluenceAboveRestingPoint = ((double)iCurrentInfluence - (double)iRestingPoint) / 10000;
+				double dExponent = /*1.5*/ (double)GD_FLOAT_GET(MINOR_INFLUENCE_SCALING_DECAY_EXPONENT);
+				double dExtraDecay = pow(dInfluenceAboveRestingPoint, dExponent) * -100;
+				iChangeThisTurn += (int)dExtraDecay;
+			}
+			else
+			{
+				// If below 100 over resting point, but still over, then extra decay = (Influence over resting point)% of -1. So, 5 over resting point = -0.05 decay
+				int iExtraDecay = (iCurrentInfluence - iRestingPoint) / -100;
+				iChangeThisTurn += iExtraDecay;
 			}
 
 			// Multiply decay rate towards protectors if capital has taken damage
