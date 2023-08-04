@@ -201,6 +201,14 @@ UPDATE Language_en_US
 SET Text = 'The Cataphract is a Byzantine unique unit, replacing the Knight. Cataphracts are slower but more powerful than the Knight unit, making them one of the most dangerous cavalry units until the arrival of the Lancer. They can move after attacking. They are able to gain defensive bonuses, unlike the Knight. Also their penalty for attacking cities is not as severe.'
 WHERE Tag = 'TXT_KEY_UNIT_BYZANTINE_CATAPHRACT_STRATEGY';
 
+UPDATE Language_en_US
+SET Text = 'The Dromon can only be gifted by City-States.'
+WHERE Tag = 'TXT_KEY_UNIT_HELP_BYZANTINE_DROMON';
+
+UPDATE Language_en_US
+SET Text = 'The Dromon performs similarly to the Liburna, but is much more powerful against units. Starts with the [COLOR_POSITIVE_TEXT]Splash I[ENDCOLOR] and [COLOR_POSITIVE_TEXT]Targeting I[ENDCOLOR] Promotions.'
+WHERE Tag = 'TXT_KEY_UNIT_BYZANTINE_DROMON_STRATEGY';
+
 --------------------
 -- Carthage
 --------------------
@@ -210,7 +218,7 @@ WHERE Tag = 'TXT_KEY_TRAIT_PHOENICIAN_HERITAGE';
 
 
 UPDATE Language_en_US
-SET Text = 'Strong Ancient Era Naval Unit, cheaper and available earlier than the Trireme; it dominates the seas through melee attacks on naval units and cities. Receives the [COLOR_POSITIVE_TEXT]Reconnaissance[ENDCOLOR] and [COLOR_POSITIVE_TEXT]Heavy Assault[ENDCOLOR] Promotions for free, making it a very strong attacker and allowing it to gain experience from exploration. Promotions are lost on upgrade. Only the Carthaginians may build it.'
+SET Text = 'Imposing Classical Era Naval Unit, stron against both cities and other ships. Only the Carthaginians may build it.[NEWLINE][NEWLINE]Receives the [COLOR_POSITIVE_TEXT]Pincer[ENDCOLOR] and [COLOR_POSITIVE_TEXT]Heavy Assault[ENDCOLOR] Promotions for free.'
 WHERE Tag = 'TXT_KEY_UNIT_HELP_CARTHAGINIAN_QUINQUEREME';
 
 --------------------
