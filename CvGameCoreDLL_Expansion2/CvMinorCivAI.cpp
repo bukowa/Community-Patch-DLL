@@ -14465,11 +14465,12 @@ CvUnit* CvMinorCivAI::DoSpawnUnit(PlayerTypes eMajor, bool bLocal, bool bExplore
 
 	// Where to put the Unit?
 	CvPlot* pUnitPlot = NULL;
-	CvCity* pXPCity = MOD_GLOBAL_CS_GIFTS_LOCAL_XP ? pMajorCapital : pMinorCapital;
+	CvCity* pXPCity = NULL;
 
 	// Local units spawn in the minor's capital
 	if (bLocal)
 	{
+		pXPCity = pMinorCapital;
 		pUnitPlot = pMinorCapital->GetPlotForNewUnit(eUnit);
 		if (!pUnitPlot)
 			pUnitPlot = pMinorCapital->plot();
@@ -14480,14 +14481,14 @@ CvUnit* CvMinorCivAI::DoSpawnUnit(PlayerTypes eMajor, bool bLocal, bool bExplore
 		CvUnitEntry* pkUnitInfo = GC.getUnitInfo(eUnit);
 		if (pkUnitInfo && pkUnitInfo->GetDomainType() == DOMAIN_SEA)
 		{
-			pXPCity = pClosestCoastalCity;
+			pXPCity = MOD_GLOBAL_CS_GIFTS_LOCAL_XP ? pClosestCoastalCity : pMinorCapital;
 			pUnitPlot = pClosestCoastalCity->GetPlotForNewUnit(eUnit);
 			if (!pUnitPlot)
 				pUnitPlot = pClosestCoastalCity->plot();
 		}
 		else
 		{
-			pXPCity = pClosestCity;
+			pXPCity = MOD_GLOBAL_CS_GIFTS_LOCAL_XP ? pClosestCity : pMinorCapital;
 			pUnitPlot = pClosestCity->GetPlotForNewUnit(eUnit);
 			if (!pUnitPlot)
 				pUnitPlot = pClosestCity->plot();
@@ -14505,7 +14506,8 @@ CvUnit* CvMinorCivAI::DoSpawnUnit(PlayerTypes eMajor, bool bLocal, bool bExplore
 		if (GET_PLAYER(eMajor).GetPlayerTraits()->GetCityStateBonusModifier() > 0)
 			pNewUnit->changeExperienceTimes100(1000);
 
-		pXPCity->addProductionExperience(pNewUnit);
+		if (MOD_BALANCE_VP)
+			pXPCity->addProductionExperience(pNewUnit);
 
 		if (!bCityStateAnnexed)
 		{
@@ -16161,6 +16163,7 @@ void CvMinorCivAI::DoMajorBullyUnit(PlayerTypes eBully, UnitTypes eUnitType)
 					{
 						GET_PLAYER(eBully).changeJONSCulture(iValue);
 						pBullyCapital->ChangeJONSCultureStored(iValue);
+
 						if (GC.getGame().getActivePlayer() != NO_PLAYER)
 						{
 							if (GET_PLAYER(GC.getGame().getActivePlayer()).GetID() == eBully)

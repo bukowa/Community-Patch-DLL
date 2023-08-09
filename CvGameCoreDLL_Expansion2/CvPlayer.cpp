@@ -2916,9 +2916,8 @@ CvPlot* CvPlayer::addFreeUnit(UnitTypes eUnit, bool bGameStart, UnitAITypes eUni
 		int iValue = GetTotalJONSCulturePerTurn() * 4;
 		changeJONSCulture(iValue);
 		if (getCapitalCity())
-		{
 			getCapitalCity()->ChangeJONSCultureStored(iValue);
-		}
+
 		CvNotifications* pNotifications = GetNotifications();
 		if (pNotifications)
 		{
@@ -28085,10 +28084,6 @@ void CvPlayer::doInstantYield(InstantYieldType iType, bool bCityFaith, GreatPers
 					{
 						changeJONSCulture(iValue);
 						pLoopCity->ChangeJONSCultureStored(iValue);
-						if(pLoopCity->GetJONSCultureStored() <= 0)
-						{
-							pLoopCity->SetJONSCultureStored(0);
-						}
 					}
 					break;
 					case YIELD_FAITH:
@@ -28198,10 +28193,6 @@ void CvPlayer::doInstantYield(InstantYieldType iType, bool bCityFaith, GreatPers
 						else
 						{
 							pLoopCity->ChangeJONSCultureStored(iValue);
-							if (pLoopCity->GetJONSCultureStored() <= 0)
-							{
-								pLoopCity->SetJONSCultureStored(0);
-							}
 						}
 						// keep track of local yields in city
 						pLoopCity->ChangeInstantYieldTotal(eYield, iValue);
@@ -30142,10 +30133,9 @@ void CvPlayer::DoSpawnGreatPerson(PlayerTypes eMinor)
 			{
 				int iValue = GetTotalJONSCulturePerTurn() * 4;
 				changeJONSCulture(iValue);
-				if(getCapitalCity() != NULL)
-				{
+				if (getCapitalCity() != NULL)
 					getCapitalCity()->ChangeJONSCultureStored(iValue);
-				}
+
 				CvNotifications* pNotifications = GetNotifications();
 				if (pNotifications)
 				{
@@ -46048,14 +46038,13 @@ void CvPlayer::processPolicies(PolicyTypes ePolicy, int iChange)
 									{
 										changeGoldenAgeTurns(getGoldenAgeLength());
 									}
-									if(pNewUnit->isCultureBoost())
+									if (pNewUnit->isCultureBoost())
 									{
 										int iValue = GetTotalJONSCulturePerTurn() * 4;
 										changeJONSCulture(iValue);
-										if(getCapitalCity() != NULL)
-										{
+										if (getCapitalCity() != NULL)
 											getCapitalCity()->ChangeJONSCultureStored(iValue);
-										}
+
 										CvNotifications* pNotifications = GetNotifications();
 										if (pNotifications)
 										{
@@ -47981,14 +47970,13 @@ void CvPlayer::createGreatGeneral(UnitTypes eGreatPersonUnit, int iX, int iY)
 	{
 		changeGoldenAgeTurns(getGoldenAgeLength());
 	}
-	if(pGreatPeopleUnit->isCultureBoost())
+	if (pGreatPeopleUnit->isCultureBoost())
 	{
 		int iValue = GetTotalJONSCulturePerTurn() * 4;
 		changeJONSCulture(iValue);
-		if(getCapitalCity() != NULL)
-		{
+		if (getCapitalCity() != NULL)
 			getCapitalCity()->ChangeJONSCultureStored(iValue);
-		}
+
 		CvNotifications* pNotifications = GetNotifications();
 		if (pNotifications)
 		{
@@ -48135,14 +48123,13 @@ void CvPlayer::createGreatAdmiral(UnitTypes eGreatPersonUnit, int iX, int iY)
 	{
 		changeGoldenAgeTurns(getGoldenAgeLength());
 	}
-	if(pGreatPeopleUnit->isCultureBoost())
+	if (pGreatPeopleUnit->isCultureBoost())
 	{
 		int iValue = GetTotalJONSCulturePerTurn() * 4;
 		changeJONSCulture(iValue);
-		if(getCapitalCity() != NULL)
-		{
+		if (getCapitalCity() != NULL)
 			getCapitalCity()->ChangeJONSCultureStored(iValue);
-		}
+
 		CvNotifications* pNotifications = GetNotifications();
 		if (pNotifications)
 		{

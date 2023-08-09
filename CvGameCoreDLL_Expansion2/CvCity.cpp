@@ -2671,13 +2671,7 @@ void CvCity::doTurn()
 		iBorderGrowth += getYieldRate(YIELD_CULTURE_LOCAL, false);
 		// Culture accumulation
 		if (iBorderGrowth > 0)
-		{
-			// Modifiers to border growth rate?
-			iBorderGrowth *= 100 + GetBorderGrowthRateIncreaseTotal();
-			iBorderGrowth /= 100;
-
 			ChangeJONSCultureStored(iBorderGrowth);
-		}
 
 		// Enough Culture to acquire a new Plot?
 		if (GetJONSCultureStored() >= GetJONSCultureThreshold())
@@ -14716,9 +14710,8 @@ void CvCity::processBuilding(BuildingTypes eBuilding, int iChange, bool bFirst, 
 										int iValue = owningPlayer.GetTotalJONSCulturePerTurn() * 4;
 										owningPlayer.changeJONSCulture(iValue);
 										if (owningPlayer.getCapitalCity() != NULL)
-										{
 											owningPlayer.getCapitalCity()->ChangeJONSCultureStored(iValue);
-										}
+
 										CvNotifications* pNotifications = owningPlayer.GetNotifications();
 										if (pNotifications)
 										{
@@ -15036,9 +15029,8 @@ void CvCity::processBuilding(BuildingTypes eBuilding, int iChange, bool bFirst, 
 										int iValue = owningPlayer.GetTotalJONSCulturePerTurn() * 4;
 										owningPlayer.changeJONSCulture(iValue);
 										if (owningPlayer.getCapitalCity() != NULL)
-										{
 											owningPlayer.getCapitalCity()->ChangeJONSCultureStored(iValue);
-										}
+
 										CvNotifications* pNotifications = owningPlayer.GetNotifications();
 										if (pNotifications)
 										{
@@ -17345,7 +17337,7 @@ void CvCity::CheckForOperationUnits()
 						//take the money...
 						kPlayer.GetTreasury()->ChangeGold(-iGoldCost);
 
-						bool bInvest = MOD_BALANCE_CORE_UNIT_INVESTMENTS || (MOD_BALANCE_CORE && pkUnitEntry->GetSpaceshipProject() != NO_PROJECT);
+						bool bInvest = MOD_BALANCE_CORE_UNIT_INVESTMENTS || (MOD_BALANCE_VP && pkUnitEntry->GetSpaceshipProject() != NO_PROJECT);
 						if (bInvest)
 						{
 							const UnitClassTypes eUnitClass = (UnitClassTypes)(pkUnitEntry->GetUnitClassType());
@@ -17460,7 +17452,7 @@ void CvCity::CheckForOperationUnits()
 				//take the money...
 				kPlayer.GetTreasury()->ChangeGold(-iGoldCost);
 
-				bool bInvest = MOD_BALANCE_CORE_UNIT_INVESTMENTS || (MOD_BALANCE_CORE && pkUnitEntry->GetSpaceshipProject() != NO_PROJECT);
+				bool bInvest = MOD_BALANCE_CORE_UNIT_INVESTMENTS || (MOD_BALANCE_VP && pkUnitEntry->GetSpaceshipProject() != NO_PROJECT);
 				if (bInvest)
 				{
 					const UnitClassTypes eUnitClass = (UnitClassTypes)(pkUnitEntry->GetUnitClassType());
@@ -19069,7 +19061,7 @@ void CvCity::SetJONSCultureStored(int iValue)
 		OutputDebugString(CvString::format("Turn %d, culture %d, delta %d\n", GC.getGame().getGameTurn(), m_iJONSCultureStored, iValue - m_iJONSCultureStored).c_str());
 	}
 
-	m_iJONSCultureStored = iValue;
+	m_iJONSCultureStored = max(iValue, 0);
 }
 
 //	--------------------------------------------------------------------------------
@@ -19077,6 +19069,15 @@ void CvCity::SetJONSCultureStored(int iValue)
 void CvCity::ChangeJONSCultureStored(int iChange)
 {
 	VALIDATE_OBJECT
+
+	// Positive modifier to border growth rate?
+	int iModifier = GetBorderGrowthRateIncreaseTotal();
+	if (iChange > 0 && iModifier > 0)
+	{
+		iChange *= 100 + iModifier;
+		iChange /= 100;
+	}
+
 	SetJONSCultureStored(GetJONSCultureStored() + iChange);
 }
 
@@ -20960,15 +20961,11 @@ int CvCity::GetBorderGrowthRateIncreaseTotal()
 		}
 	}
 
-	// Double border growth during GA or WLTKD? These intentionally do not stack!
-	if (GET_PLAYER(getOwner()).IsDoubleBorderGrowthGA() && GET_PLAYER(getOwner()).isGoldenAge())
+	// Double border growth during GA or WLTKD? These intentionally do not stack with each other, but do stack multiplicatively with other modifiers.
+	if ((GET_PLAYER(getOwner()).IsDoubleBorderGrowthGA() && GET_PLAYER(getOwner()).isGoldenAge())
+		|| (GET_PLAYER(getOwner()).IsDoubleBorderGrowthWLTKD() && GetWeLoveTheKingDayCounter() > 0))
 	{
-		iModifier *= 2; // double the extra rate
-		iModifier += 100; // double the base rate
-	}
-	else if (GET_PLAYER(getOwner()).IsDoubleBorderGrowthWLTKD() && GetWeLoveTheKingDayCounter() > 0)
-	{
-		iModifier *= 2; // double the extra rate
+		iModifier *= 2; // double the extra rate (if any)
 		iModifier += 100; // double the base rate
 	}
 
@@ -31436,7 +31433,7 @@ bool CvCity::IsCanPurchase(const std::vector<int>& vPreExistingBuildings, bool b
 			}
 			//Have we already invested here?
 			CvUnitEntry* pGameUnit = GC.getUnitInfo(eUnitType);
-			if (MOD_BALANCE_CORE_UNIT_INVESTMENTS || (MOD_BALANCE_CORE && pGameUnit->GetSpaceshipProject() != NO_PROJECT))
+			if (MOD_BALANCE_CORE_UNIT_INVESTMENTS || (MOD_BALANCE_VP && pGameUnit->GetSpaceshipProject() != NO_PROJECT))
 			{
 				const UnitClassTypes eUnitClass = (UnitClassTypes)(pGameUnit->GetUnitClassType());
 				if (IsUnitInvestment(eUnitClass))
@@ -31863,7 +31860,7 @@ void CvCity::Purchase(UnitTypes eUnitType, BuildingTypes eBuildingType, ProjectT
 			CvUnitEntry* pGameUnit = GC.getUnitInfo(eUnitType);
 			if (pGameUnit)
 			{
-				bool bInvest = MOD_BALANCE_CORE_UNIT_INVESTMENTS || (MOD_BALANCE_CORE && pGameUnit->GetSpaceshipProject() != NO_PROJECT);
+				bool bInvest = MOD_BALANCE_CORE_UNIT_INVESTMENTS || (MOD_BALANCE_VP && pGameUnit->GetSpaceshipProject() != NO_PROJECT);
 				if (bInvest)
 				{
 					const UnitClassTypes eUnitClass = (UnitClassTypes)(pGameUnit->GetUnitClassType());
