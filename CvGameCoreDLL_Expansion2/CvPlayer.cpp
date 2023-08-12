@@ -9861,6 +9861,10 @@ void CvPlayer::DoLiberatePlayer(PlayerTypes ePlayer, int iOldCityID, bool bForce
 
 		// Reduce liberator's war weariness by 25%
 		GetCulture()->SetWarWeariness(GetCulture()->GetWarWeariness() - (GetCulture()->GetWarWeariness() / 4));
+
+		// If liberating a City-State, increase Influence resting point
+		if (GET_PLAYER(ePlayer).isMinorCiv())
+			GET_PLAYER(ePlayer).GetMinorCivAI()->ChangeRestingPointChange(GetID(), /*0 in CP, 100 in VP*/ GD_INT_GET(MINOR_LIBERATION_RESTING_INFLUENCE));
 	}
 
 	// Bonuses for liberation OR sphere removal
