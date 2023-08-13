@@ -21674,6 +21674,8 @@ int CvPlayer::GetHappinessForGAP() const
 				iTotalGAP += iGAP;
 		}
 
+		iTotalGAP *= (100 + m_pPlayerPolicies->GetNumericModifier(POLICYMOD_GAP_FROM_HAPPINESS_MODIFIER));
+		iTotalGAP /= 100;
 		return iTotalGAP;
 	}
 	return GetExcessHappiness();
