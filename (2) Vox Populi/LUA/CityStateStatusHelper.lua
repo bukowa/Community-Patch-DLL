@@ -39,7 +39,7 @@ ktQuestsDisplayOrder = {
 	MinorCivQuestTypes.MINOR_CIV_QUEST_DENOUNCE_MAJOR,
 	MinorCivQuestTypes.MINOR_CIV_QUEST_WAR,
 	MinorCivQuestTypes.MINOR_CIV_QUEST_LIBERATION,
-	-- Then other pesonal quests
+	-- Then other personal quests
 	MinorCivQuestTypes.MINOR_CIV_QUEST_DISCOVER_PLOT,
 	MinorCivQuestTypes.MINOR_CIV_QUEST_BUILD_X_BUILDINGS,
 	MinorCivQuestTypes.MINOR_CIV_QUEST_UNIT_STEAL_FROM,
@@ -796,7 +796,7 @@ function GetActiveQuestToolTip(iMajor, iMinor)
 			elseif (eType == MinorCivQuestTypes.MINOR_CIV_QUEST_CIRCUMNAVIGATION) then
 				sToolTipText = sToolTipText .. Locale.Lookup( "TXT_KEY_CITY_STATE_QUEST_CIRCUMNAVIGATION_FORMAL" );
 			elseif (eType == MinorCivQuestTypes.MINOR_CIV_QUEST_LIBERATION) then
-				sToolTipText = sToolTipText .. Locale.Lookup( "TXT_KEY_CITY_STATE_QUEST_LIBERATION_FORMAL", Players[iQuestData1]:GetNameKey() );
+				sToolTipText = sToolTipText .. Locale.Lookup( "TXT_KEY_CITY_STATE_QUEST_LIBERATION_FORMAL", pMinor:GetTargetCityString(iMajor , eType ) );
 			elseif (eType == MinorCivQuestTypes.MINOR_CIV_QUEST_HORDE) then
 				sToolTipText = sToolTipText .. Locale.Lookup( "TXT_KEY_CITY_STATE_QUEST_HORDE_FORMAL" );
 			elseif (eType == MinorCivQuestTypes.MINOR_CIV_QUEST_REBELLION) then

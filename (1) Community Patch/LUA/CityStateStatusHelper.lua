@@ -32,7 +32,7 @@ ktQuestsDisplayOrder = {
 	MinorCivQuestTypes.MINOR_CIV_QUEST_GIVE_GOLD,
 	MinorCivQuestTypes.MINOR_CIV_QUEST_PLEDGE_TO_PROTECT,
 	MinorCivQuestTypes.MINOR_CIV_QUEST_DENOUNCE_MAJOR,
-	-- Then other pesonal quests
+	-- Then other personal quests
 	MinorCivQuestTypes.MINOR_CIV_QUEST_DISCOVER_PLOT,
 	MinorCivQuestTypes.MINOR_CIV_QUEST_BUILD_X_BUILDINGS,
 	MinorCivQuestTypes.MINOR_CIV_QUEST_UNIT_STEAL_FROM,

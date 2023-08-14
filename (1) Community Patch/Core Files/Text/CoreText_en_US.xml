@@ -2479,7 +2479,7 @@
 		</Row>
 
 		<Row Tag="TXT_KEY_NOTIFICATION_QUEST_COUP_CITY_COMPLETE">
-			<Text>{@1_Civname} commends you for your successful coup.</Text>
+			<Text>{@2_Civname} commends you for your successful coup against {@1_CityName}.</Text>
 		</Row>
 		<Row Tag="TXT_KEY_NOTIFICATION_SUMMARY_COUP_CITY_COMPLETE">
 			<Text>Successful coup for {@1_Civname}!</Text>
@@ -3797,7 +3797,7 @@
 			<Text>BULLIED:</Text>
 		</Row>
 		<Row Tag="TXT_KEY_POP_CSTATE_BULLY_RESILIENT_VARIABLE_THRESHOLD">
-			<Text>They are currently [COLOR_WARNING_TEXT]resilient[ENDCOLOR], because you are {1_FactorScore}% below the required tribute threshold of [COLOR_CYAN]+{2_Threshold}%[ENDCOLOR]:</Text>
+			<Text>They are currently [COLOR_WARNING_TEXT]resilient[ENDCOLOR], because you are {1_FactorScore}% below the tribute threshold of [COLOR_CYAN]{2_Threshold}%[ENDCOLOR]:</Text>
 		</Row>
 		
 		<!-- ADDITIONS TO EXISTING DIPLOMACY TEXTS -->

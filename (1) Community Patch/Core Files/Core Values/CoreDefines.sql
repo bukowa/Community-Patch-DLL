@@ -124,6 +124,9 @@ UPDATE Defines SET Value = '20' WHERE Name = 'PERMANENT_WAR_OTHER_CHANCE_CLOSE';
 UPDATE Defines SET Value = '25' WHERE Name = 'PERMANENT_WAR_OTHER_CHANCE_NEIGHBORS';
 UPDATE Defines SET Value = '20' WHERE Name = 'PERMANENT_WAR_OTHER_AT_WAR';
 INSERT INTO Defines (Name, Value) SELECT 'MINOR_REMOVE_SPHERE_FRIENDSHIP', '0';
+INSERT INTO Defines (Name, Value) SELECT 'MINOR_CIV_QUEST_ROUTE_MAXIMUM_DISTANCE', '7';
+INSERT INTO Defines (Name, Value) SELECT 'MINOR_CIV_QUEST_WONDER_COMPLETION_MAX_TURNS', '30';
+INSERT INTO Defines (Name, Value) SELECT 'MINOR_CIV_QUEST_ARCHAEOLOGY_RANGE', '12';
 
 
 -- Settler Stuff
@@ -598,7 +601,7 @@ INSERT INTO Defines (Name, Value) SELECT 'TECH_NEED_MODIFIER_PER_TECH_ABOVE_MEDI
 INSERT INTO Defines (Name, Value) SELECT 'TECH_NEED_MODIFIER_PER_TECH_BELOW_MEDIAN', '0'; -- Modifier to needs for each tech behind the median # of techs researched you are. Disabled by default. -100 = -1%.
 INSERT INTO Defines (Name, Value) SELECT 'CITY_SIZE_NEED_MODIFIER', '0'; -- Modifier to needs per citizen in the city. Disabled by default. -100 = -1%.
 INSERT INTO Defines (Name, Value) SELECT 'EMPIRE_SIZE_NEED_MODIFIER_CITIES', '500'; -- Modifier to needs per non-puppet city in the empire, excluding the capital. Scales with map size. Default is 500 (+5%). Does not support negative values.
-INSERT INTO Defines (Name, Value) SELECT 'EMPIRE_SIZE_NEED_MODIFIER_POP', '25'; --  Modifier to needs per citizen in the empire, excluding those in puppet cities. Scales with map size. Default is 25 (+1% per 4 citizens). Does not support negative values.
+INSERT INTO Defines (Name, Value) SELECT 'EMPIRE_SIZE_NEED_MODIFIER_POP', '125'; --  Modifier to needs per citizen in the empire, excluding those in puppet cities. Scales with map size. Default is 125 (+1% per 8 citizens). Does not support negative values.
 
 -- Unhappiness from Other Sources
 INSERT INTO Defines (Name, Value) SELECT 'UNHAPPINESS_PER_STARVING_POP', '1.0'; -- Unhappiness point per starving citizen. (rounded down)
@@ -762,7 +765,6 @@ INSERT INTO Defines (Name, Value) SELECT 'BALANCE_SCOUT_XP_RANDOM_VALUE', '12';
 INSERT INTO Defines (Name, Value) SELECT 'BALANCE_SCOUT_XP_BASE', '1';
 
 -- City-States
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_CP_QUESTS', '1'; -- New VP Quests
 INSERT INTO Defines (Name, Value) SELECT 'BALANCE_CS_WAR_COOLDOWN_RATE', '50'; -- How long till a City-State forgets that a major aggressively attacked it?
 INSERT INTO Defines (Name, Value) SELECT 'BALANCE_MINOR_PROTECTION_MINIMUM_DURATION', '10'; -- How long before a major can revoke a PtP to a CS?
 INSERT INTO Defines (Name, Value) SELECT 'BALANCE_CS_PLEDGE_TO_PROTECT_DEFENSE_BONUS', '5'; -- Bonus to CS capital's CS for each PtP
@@ -812,21 +814,27 @@ INSERT INTO Defines (Name, Value) SELECT 'CSD_GOLD_GIFT_DISABLED', '0';
 INSERT INTO Defines (Name, Value) SELECT 'MINOR_CIV_HEAVY_TRIBUTE_THRESHOLD', '0';
 
 -- Quest stuff
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_GIFT_SPECIFIC_UNIT', '0';
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_WAR', '0';
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_INFLUENCE', '0';
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_FIND_CITY_STATE', '0';
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_TOURISM', '0';
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_ARCHAEOLOGY', '0';
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_CIRCUMNAVIGATION', '0';
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_LIBERATION', '0';
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_HORDE', '0';
-INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_REBELLION', '0';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_WAR', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_CONSTRUCT_NATIONAL_WONDER', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_GIFT_SPECIFIC_UNIT', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_FIND_CITY_STATE', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_INFLUENCE', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_TOURISM', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_ARCHAEOLOGY', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_CIRCUMNAVIGATION', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_LIBERATION', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_HORDE', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_REBELLION', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_DISCOVER_PLOT', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_BUILD_X_BUILDINGS', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_UNIT_STEAL_FROM', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_UNIT_COUP_CITY', '1';
+INSERT INTO Defines (Name, Value) SELECT 'QUEST_DISABLED_UNIT_GET_CITY', '1';
 
 INSERT INTO Defines (Name, Value) SELECT 'MINOR_QUEST_REBELLION_TIMER', '20';
 INSERT INTO Defines (Name, Value) SELECT 'INFLUENCE_MINOR_QUEST_BOOST', '20';
 
-INSERT INTO Defines (Name, Value) SELECT 'MINOR_FRIENDSHIP_DROP_PER_TURN_DAMAGED_CAPITAL_MULTIPLIER', '300';
+INSERT INTO Defines (Name, Value) SELECT 'MINOR_FRIENDSHIP_DROP_PER_TURN_DAMAGED_CAPITAL_MULTIPLIER', '100';
 INSERT INTO Defines (Name, Value) SELECT 'MINOR_INFLUENCE_SCALING_DECAY_EXPONENT', '1.5';
 
 -- Quest proclivity values

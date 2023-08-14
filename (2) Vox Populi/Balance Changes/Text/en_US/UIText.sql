@@ -1068,7 +1068,6 @@ VALUES  ('TXT_KEY_CO_TAB_HISTORIC_EVENTS', ' Historic Events'),
 	('TXT_KEY_CO_HISTORIC_EVENT_TRADE_LAND', '[ICON_CARAVAN] Trade with a Major City'), --Also Unused kinda it uses City Name
 	('TXT_KEY_CO_HISTORIC_EVENT_TRADE_SEA', '[ICON_CARGO_SHIP] Trade with a Major City'), --Also Unused kinda it uses City Name
 	('TXT_KEY_CO_HISTORIC_EVENT_TRADE_CS', '[ICON_CARAVAN]/[ICON_CARGO_SHIP] Trade with a [ICON_CITY_STATE] City-State'),
-	('TXT_KEY_CO_HISTORIC_EVENT_CITY_FOUND_CAPITAL', 'Founding Capital ([ICON_CAPITAL])'), --Unused
 	('TXT_KEY_CO_HISTORIC_EVENT_ERA_CHANGE_TT', 'Each [ICON_RESEARCH] Era you advance to will be a [COLOR_POSITIVE_TEXT]Historic Event[ENDCOLOR]!'),
 	('TXT_KEY_CO_HISTORIC_EVENT_WORLD_WONDER_TT', 'Each [ICON_WONDER] World Wonders you finish will be a [COLOR_POSITIVE_TEXT]Historic Event[ENDCOLOR]!'),
 	('TXT_KEY_CO_HISTORIC_EVENT_GREAT_PERSON_TT', 'Each [ICON_GREAT_PEOPLE] Great Person born in your Civilization will be a [COLOR_POSITIVE_TEXT]Historic Event[ENDCOLOR]!'),
@@ -1077,11 +1076,18 @@ VALUES  ('TXT_KEY_CO_TAB_HISTORIC_EVENTS', ' Historic Events'),
 	('TXT_KEY_CO_HISTORIC_EVENT_DIG_TT', 'Each [ICON_RES_ARTIFACTS] Archaeological Sites evacuated will be a [COLOR_POSITIVE_TEXT]Historic Event[ENDCOLOR]!'),
 	('TXT_KEY_CO_HISTORIC_EVENT_TRADE_LAND_TT', 'Each [ICON_CARAVAN] Land Trade Route completed from [COLOR_POSITIVE_TEXT]{1_Name}[ENDCOLOR] to another foreign Major City will be a [COLOR_POSITIVE_TEXT]Historic Event[ENDCOLOR]! The amount here will be sent toward the targeted Major Civilization and one-third of the amount will be sent to every other Civilizations.'),
 	('TXT_KEY_CO_HISTORIC_EVENT_TRADE_SEA_TT', 'Each [ICON_CARGO_SHIP] Sea Trade Route completed from [COLOR_POSITIVE_TEXT]{1_Name}[ENDCOLOR] to another foreign Major City will be a [COLOR_POSITIVE_TEXT]Historic Event[ENDCOLOR]! The amount here will be sent toward the targeted Major Civilization and one-third of the amount will be sent to every other Civilizations.'),
-	('TXT_KEY_CO_HISTORIC_EVENT_TRADE_CS_TT', 'Each [ICON_INTERNATIONAL_TRADE] Trade Route completed either by land or sea with a [ICON_CITY_STATE] City-State will be a [COLOR_POSITIVE_TEXT]Historic Event[ENDCOLOR]! Unlike trading with a foreign Major City, this amount will be the same sent to all other Civilizations.'),
-	('TXT_KEY_CO_HISTORIC_EVENT_CITY_FOUND', 'Founding a City'), --Unused
-	('TXT_KEY_CO_HISTORIC_EVENT_CITY_CONQUEST', 'City Conquest'), --Unused
-	('TXT_KEY_CO_HISTORIC_EVENT_PLAYER_TURNS_PASSED', 'Time Passage'), --Unused
-	('TXT_KEY_CO_HISTORIC_EVENT_AI_TURNS_PASSED', 'Time Passage'); --Unused
+	('TXT_KEY_CO_HISTORIC_EVENT_TRADE_CS_TT', 'Each [ICON_INTERNATIONAL_TRADE] Trade Route completed either by land or sea with a [ICON_CITY_STATE] City-State will be a [COLOR_POSITIVE_TEXT]Historic Event[ENDCOLOR]! Unlike trading with a foreign Major City, this amount will be the same sent to all other Civilizations.');
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_CITY_FOUND_CAPITAL', 'Founding Capital ([ICON_CAPITAL])'), --Unused
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_CITY_FOUND', 'Founding a City'), --Unused
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_CITY_CONQUEST', 'City Conquest'), --Unused
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_RESEARCHED_TECH', 'Researching a new Technology'), --Unused
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_ADOPTED_POLICY', 'Adopting a new Social Policy'), --Unused
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_COMPLETED_POLICY_TREE', 'Completing a Social Policy Tree'), --Unused
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_KILLED_MAJOR_UNIT', 'Killing a Major Civ Unit'), --Unused
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_KILLED_CITY_STATE_UNIT', 'Killing a City-State Unit'), --Unused
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_KILLED_BARBARIAN_UNIT', 'Killing a Barbarian Unit'), --Unused
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_PLAYER_TURNS_PASSED', 'Time Passage'), --Unused
+	--('TXT_KEY_CO_DIFFICULTY_BONUS_AI_TURNS_PASSED', 'Time Passage'), --Unused
 
 
 -- Victory Panel

@@ -3013,32 +3013,9 @@ CvCity* CvPlayer::acquireCity(CvCity* pCity, bool bConquest, bool bGift)
 		else
 			bHolyCity = false;
 	}
-	
-	PlayerTypes ePlayerToLiberate = NO_PLAYER;
 
-	// Can this city be liberated?
-	if (eOriginalOwner != eOldOwner && eOriginalOwner != GetID())
-	{
-		ePlayerToLiberate = eOriginalOwner;
-
-		// If we're at war with the original owner and the last owner was a City-State, liberate them instead
-		if (IsAtWarWith(ePlayerToLiberate))
-		{
-			if (ePreviousOwner != NO_PLAYER && eOriginalOwner != ePreviousOwner && GET_PLAYER(ePreviousOwner).isMinorCiv())
-			{
-				ePlayerToLiberate = ePreviousOwner;
-			}
-			else
-			{
-				ePlayerToLiberate = NO_PLAYER;
-			}
-		}
-
-		if (ePlayerToLiberate != NO_PLAYER && !CanLiberatePlayerCity(ePlayerToLiberate))
-		{
-			ePlayerToLiberate = NO_PLAYER;
-		}
-	}
+	// Can we liberate this city for someone if we want to?
+	PlayerTypes ePlayerToLiberate = GetPlayerToLiberate(pCity);
 
 	// Can a sphere of influence be removed from a City-State?
 	bool bAllowSphereRemoval = false;
@@ -3244,8 +3221,11 @@ CvCity* CvPlayer::acquireCity(CvCity* pCity, bool bConquest, bool bGift)
 				iLoserProgressValue *= /*150*/ GD_INT_GET(WAR_PROGRESS_HOLY_CITY_MULTIPLIER);
 				iLoserProgressValue /= 100;
 
-				GET_PLAYER(eOldOwner).SetHasLostHolyCity(true, GetID());
-				GET_PLAYER(eOldOwner).SetLostHolyCityXY(iCityX, iCityY);
+				if (!GET_PLAYER(eOldOwner).IsHasLostHolyCity()) // Only the first lost Holy City triggers diplo penalties and the like.
+				{
+					GET_PLAYER(eOldOwner).SetHasLostHolyCity(true, GetID());
+					GET_PLAYER(eOldOwner).SetLostHolyCityXY(iCityX, iCityY);
+				}
 
 				if (isMajorCiv())
 				{
@@ -4114,8 +4094,8 @@ CvCity* CvPlayer::acquireCity(CvCity* pCity, bool bConquest, bool bGift)
 	// Reacquired our Holy City?
 	if (bHolyCity && IsHasLostHolyCity() && pNewCity->GetCityReligions()->IsHolyCityForReligion(GetReligions()->GetOriginalReligionCreatedByPlayer()))
 	{
-		// Notify, etc.
 		SetHasLostHolyCity(false, NO_PLAYER);
+		SetLostHolyCityXY(-1, -1);
 	}
 
 	// Reacquired our original capital?
@@ -4739,7 +4719,7 @@ CvCity* CvPlayer::acquireCity(CvCity* pCity, bool bConquest, bool bGift)
 			// AI decides what to do with a City
 			else if (!isHuman())
 			{
-				AI_conquerCity(pNewCity, ePlayerToLiberate, bGift, bAllowSphereRemoval); // Calling this could delete the pointer...
+				AI_conquerCity(pNewCity, bGift, bAllowSphereRemoval); // Calling this could delete the pointer...
 
 				// So we will check to see if the plot still contains the city.
 				CvCity* pkCurrentCity = pCityPlot->getPlotCity();
@@ -4788,7 +4768,7 @@ CvCity* CvPlayer::acquireCity(CvCity* pCity, bool bConquest, bool bGift)
 
 	// Possible difficulty bonus!
 	if (bFirstConquest && getNumCities() > 0)
-		DoDifficultyBonus(HISTORIC_EVENT_CITY_CONQUEST);
+		DoDifficultyBonus(DIFFICULTY_BONUS_CITY_CONQUEST);
 
 	// Now that everything is done, we need to update diplomacy!
 	// This prevents the AI from getting exploited in peace deals, among other things
@@ -9861,68 +9841,78 @@ void CvPlayer::DoLiberatePlayer(PlayerTypes ePlayer, int iOldCityID, bool bForce
 		}
 	}
 
-	// Bonuses for liberation only
-	if (!bForced)
+	// Is this a first liberation? Removing a Sphere of Influence also counts as 'liberating' the city for one-time bonuses.
+	bool bFirstLiberation = false;
+	if (!bForced || bSphereRemoval)
 	{
 		if (!pNewCity->isEverLiberated(GetID()))
 		{
+			bFirstLiberation = true;
 			pNewCity->setEverLiberated(GetID(), true);
-
-			// Reduce liberator's warmongering penalties (if any), unless this is their own team's city
-			if (getTeam() != GET_PLAYER(ePlayer).getTeam())
-				CvDiplomacyAIHelpers::ApplyLiberationBonuses(pNewCity, GetID(), ePlayer);
-
-			// Reduce liberator's war weariness by 25%
-			GetCulture()->SetWarWeariness(GetCulture()->GetWarWeariness() - (GetCulture()->GetWarWeariness() / 4));
 		}
 	}
 
+	// Bonuses for first liberation only (remove sphere doesn't count)
+	if (!bSphereRemoval && bFirstLiberation)
+	{
+		// Reduce liberator's warmongering penalties (if any), unless this is their own team's city
+		if (getTeam() != GET_PLAYER(ePlayer).getTeam())
+			CvDiplomacyAIHelpers::ApplyLiberationBonuses(pNewCity, GetID(), ePlayer);
+
+		// Reduce liberator's war weariness by 25%
+		GetCulture()->SetWarWeariness(GetCulture()->GetWarWeariness() - (GetCulture()->GetWarWeariness() / 4));
+	}
+
 	// Bonuses for liberation OR sphere removal
+	// Liberator's bonuses apply only on first liberation
+	// Liberated player's bonuses always apply
 	if (!bForced || bSphereRemoval)
 	{
-#if defined(MOD_BALANCE_CORE_POLICIES)
-		//gain yields for liberation
-		int iPop = pNewCity->getPopulation();
-		for (int iI = 0; iI < NUM_YIELD_TYPES; iI++)
+		if (bFirstLiberation)
 		{
-			YieldTypes eYield = (YieldTypes)iI;
-			int iLiberationYield = getYieldForLiberation(eYield);
-			if (iLiberationYield > 0)
-				doInstantYield(INSTANT_YIELD_TYPE_INSTANT, false, NO_GREATPERSON, NO_BUILDING, iLiberationYield * iPop, true, NO_PLAYER, NULL, false, getCapitalCity(), false, true, true, eYield);
-		}
-
-		//liberator gets influence with all City-States?
-		int iInfluence = getInfluenceForLiberation();
-		if (iInfluence > 0)
-		{
-			for (int iMinorLoop = MAX_MAJOR_CIVS; iMinorLoop < MAX_CIV_PLAYERS; iMinorLoop++)
+			//gain yields for liberation
+			int iPop = pNewCity->getPopulation();
+			for (int iI = 0; iI < NUM_YIELD_TYPES; iI++)
 			{
-				PlayerTypes eMinorLoop = (PlayerTypes)iMinorLoop;
-				if (eMinorLoop != NO_PLAYER)
+				YieldTypes eYield = (YieldTypes)iI;
+				int iLiberationYield = getYieldForLiberation(eYield);
+				if (iLiberationYield > 0)
+					doInstantYield(INSTANT_YIELD_TYPE_INSTANT, false, NO_GREATPERSON, NO_BUILDING, iLiberationYield * iPop, true, NO_PLAYER, NULL, false, getCapitalCity(), false, true, true, eYield);
+			}
+
+			//liberator gets influence with all City-States?
+			int iInfluence = getInfluenceForLiberation();
+			if (iInfluence > 0)
+			{
+				for (int iMinorLoop = MAX_MAJOR_CIVS; iMinorLoop < MAX_CIV_PLAYERS; iMinorLoop++)
 				{
-					CvPlayer* pMinorLoop = &GET_PLAYER(eMinorLoop);
-					if (pMinorLoop->isMinorCiv() && pMinorLoop->isAlive())
+					PlayerTypes eMinorLoop = (PlayerTypes)iMinorLoop;
+					if (eMinorLoop != NO_PLAYER)
 					{
-						if (GET_TEAM(pMinorLoop->getTeam()).isHasMet(getTeam()))
+						CvPlayer* pMinorLoop = &GET_PLAYER(eMinorLoop);
+						if (pMinorLoop->isMinorCiv() && pMinorLoop->isAlive())
 						{
-							pMinorLoop->GetMinorCivAI()->ChangeFriendshipWithMajor(GetID(), iInfluence, false);
+							if (GET_TEAM(pMinorLoop->getTeam()).isHasMet(getTeam()))
+							{
+								pMinorLoop->GetMinorCivAI()->ChangeFriendshipWithMajor(GetID(), iInfluence, false);
+							}
 						}
 					}
 				}
 			}
-		}
 
-		//liberator gets XP with all of their units?
-		int iNumXP = getExperienceForLiberation();
-		if (iNumXP > 0)
-		{
-			doInstantYield(INSTANT_YIELD_TYPE_INSTANT, false, NO_GREATPERSON, NO_BUILDING, iNumXP, false, NO_PLAYER, NULL, false, getCapitalCity(), false, true, false, YIELD_JFD_SOVEREIGNTY);
-			int iLoop = 0;
-			for (CvUnit* pLoopUnit = firstUnit(&iLoop); NULL != pLoopUnit; pLoopUnit = nextUnit(&iLoop))
+			//liberator gets XP with all of their units?
+			int iNumXP = getExperienceForLiberation();
+			if (iNumXP > 0)
 			{
-				if (pLoopUnit && pLoopUnit->IsCombatUnit())
+				doInstantYield(INSTANT_YIELD_TYPE_INSTANT, false, NO_GREATPERSON, NO_BUILDING, iNumXP, false, NO_PLAYER, NULL, false, getCapitalCity(), false, true, false, YIELD_JFD_SOVEREIGNTY);
+				int iLoop = 0;
+				for (CvUnit* pLoopUnit = firstUnit(&iLoop); NULL != pLoopUnit; pLoopUnit = nextUnit(&iLoop))
 				{
-					pLoopUnit->changeExperienceTimes100(iNumXP * 100);
+					if (pLoopUnit && pLoopUnit->IsCombatUnit())
+					{
+						pLoopUnit->changeExperienceTimes100(iNumXP * 100);
+					}
 				}
 			}
 		}
@@ -9955,7 +9945,6 @@ void CvPlayer::DoLiberatePlayer(PlayerTypes ePlayer, int iOldCityID, bool bForce
 					GET_PLAYER(ePlayer).initUnit(eUnit, pNewCity->getX(), pNewCity->getY());
 			}
 		}
-#endif
 	}
 
 	// Meet the team, if we haven't already
@@ -10014,17 +10003,17 @@ void CvPlayer::DoLiberatePlayer(PlayerTypes ePlayer, int iOldCityID, bool bForce
 bool CvPlayer::CanLiberatePlayer(PlayerTypes ePlayer)
 {
 	// Other Player must be dead now
-	if(GET_PLAYER(ePlayer).isAlive())
+	if (GET_PLAYER(ePlayer).isAlive())
 	{
 		return false;
 	}
 
-	if(GET_PLAYER(ePlayer).IsEverConqueredBy(m_eID))
+	if (GET_PLAYER(ePlayer).IsEverConqueredBy(m_eID))
 	{
 		return false;
 	}
 
-	if(GET_TEAM(GET_PLAYER(ePlayer).getTeam()).GetKilledByTeam() == getTeam())
+	if (GET_TEAM(GET_PLAYER(ePlayer).getTeam()).GetKilledByTeam() == getTeam())
 	{
 		return false;
 	}
@@ -10038,19 +10027,16 @@ bool CvPlayer::CanLiberatePlayer(PlayerTypes ePlayer)
 		}
 	}
 
-	// Exploit fix - if we attacked a player we resurrected, we can't resurrect them again
-	if (GET_PLAYER(ePlayer).GetDiplomacyAI()->IsResurrectorAttackedUs(m_eID))
+	// Exploit fix - if we attacked a major we resurrected, we can't resurrect them again
+	if (GET_PLAYER(ePlayer).isMajorCiv() && GET_PLAYER(ePlayer).GetDiplomacyAI()->IsResurrectorAttackedUs(m_eID))
 	{
 		return false;
 	}
-	
-#if defined(MOD_EVENTS_LIBERATION)
-	if (MOD_EVENTS_LIBERATION) {
-		if (GAMEEVENTINVOKE_TESTALL(GAMEEVENT_PlayerCanLiberate, GetID(), ePlayer) == GAMEEVENTRETURN_FALSE) {
-			return false;
-		}
+
+	if (MOD_EVENTS_LIBERATION && GAMEEVENTINVOKE_TESTALL(GAMEEVENT_PlayerCanLiberate, GetID(), ePlayer) == GAMEEVENTRETURN_FALSE)
+	{
+		return false;
 	}
-#endif
 
 	return true;
 }
@@ -10058,12 +10044,45 @@ bool CvPlayer::CanLiberatePlayer(PlayerTypes ePlayer)
 //	--------------------------------------------------------------------------------
 bool CvPlayer::CanLiberatePlayerCity(PlayerTypes ePlayer)
 {
+	if (ePlayer == NO_PLAYER || ePlayer == BARBARIAN_PLAYER)
+		return false;
+
 	if (!GET_PLAYER(ePlayer).isAlive())
 	{
 		return CanLiberatePlayer(ePlayer);
 	}
 
 	return IsAtPeaceWith(ePlayer);
+}
+
+//	--------------------------------------------------------------------------------
+PlayerTypes CvPlayer::GetPlayerToLiberate(CvCity* pCity)
+{
+	PlayerTypes eOriginalOwner = pCity->getOriginalOwner();
+	PlayerTypes ePreviousOwner = pCity->getPreviousOwner();
+	PlayerTypes ePlayerToLiberate = eOriginalOwner;
+	if (ePlayerToLiberate == m_eID)
+		return NO_PLAYER;
+
+	// If we're at war with the original owner (or we otherwise can't liberate them) and the last owner was a City-State, liberate them instead
+	if (!CanLiberatePlayerCity(ePlayerToLiberate))
+	{
+		if (ePreviousOwner != NO_PLAYER && eOriginalOwner != ePreviousOwner && GET_PLAYER(ePreviousOwner).isMinorCiv())
+		{
+			ePlayerToLiberate = ePreviousOwner;
+		}
+		else
+		{
+			ePlayerToLiberate = NO_PLAYER;
+		}
+
+		if (ePlayerToLiberate != NO_PLAYER && !CanLiberatePlayerCity(ePlayerToLiberate))
+		{
+			ePlayerToLiberate = NO_PLAYER;
+		}
+	}
+
+	return ePlayerToLiberate;
 }
 
 //	--------------------------------------------------------------------------------
@@ -11048,13 +11067,13 @@ void CvPlayer::doTurn()
 		int iTurnInterval = getHandicapInfo().getDifficultyBonusTurnInterval();
 		if (iTurnInterval > 0 && GC.getGame().getElapsedGameTurns() % iTurnInterval == 0)
 		{
-			DoDifficultyBonus(HISTORIC_EVENT_PLAYER_TURNS_PASSED);
+			DoDifficultyBonus(DIFFICULTY_BONUS_PLAYER_TURNS_PASSED);
 		}
 
 		iTurnInterval = isHuman() ? 0 : GC.getGame().getHandicapInfo().getAIDifficultyBonusTurnInterval();
 		if (iTurnInterval > 0 && GC.getGame().getElapsedGameTurns() % iTurnInterval == 0)
 		{
-			DoDifficultyBonus(HISTORIC_EVENT_AI_TURNS_PASSED);
+			DoDifficultyBonus(DIFFICULTY_BONUS_AI_TURNS_PASSED);
 		}
 	}
 
@@ -12812,12 +12831,6 @@ void CvPlayer::disband(CvCity* pCity)
 	if (getNumCities() == 1)
 	{
 		setFoundedFirstCity(false);
-	}
-
-	// Remove Holy City status!
-	if (pCity->GetCityReligions()->IsHolyCityAnyReligion())
-	{
-		GC.getGame().GetGameReligions()->SetHolyCity(pCity->GetCityReligions()->GetReligionForHolyCity(), NULL);
 	}
 
 	GC.getGame().addDestroyedCityName(pCity->getNameKey());
@@ -19700,20 +19713,38 @@ void CvPlayer::DoDifficultyBonus(HistoricEventTypes eHistoricEvent)
 			case HISTORIC_EVENT_TRADE_CS:
 				strTemp.Format("HISTORIC EVENT: TRADE ROUTE (CITY-STATE) - Received Handicap Bonus");
 				break;
-			case HISTORIC_EVENT_CITY_FOUND_CAPITAL:
-				strTemp.Format("HISTORIC EVENT: CAPITAL FOUNDING - Received Handicap Bonus");
+			case DIFFICULTY_BONUS_CITY_FOUND_CAPITAL:
+				strTemp.Format("CAPITAL FOUNDING - Received Handicap Bonus");
 				break;
-			case HISTORIC_EVENT_CITY_FOUND:
-				strTemp.Format("HISTORIC EVENT: CITY FOUNDING - Received Handicap Bonus");
+			case DIFFICULTY_BONUS_CITY_FOUND:
+				strTemp.Format("CITY FOUNDING - Received Handicap Bonus");
 				break;
-			case HISTORIC_EVENT_CITY_CONQUEST:
-				strTemp.Format("HISTORIC EVENT: CITY CONQUEST - Received Handicap Bonus");
+			case DIFFICULTY_BONUS_CITY_CONQUEST:
+				strTemp.Format("CITY CONQUEST - Received Handicap Bonus");
 				break;
-			case HISTORIC_EVENT_PLAYER_TURNS_PASSED:
-				strTemp.Format("HISTORIC EVENT: %d TURNS PASSED - Received Handicap Bonus", pHandicapInfo->getDifficultyBonusTurnInterval());
+			case DIFFICULTY_BONUS_RESEARCHED_TECH:
+				strTemp.Format("RESEARCHING TECH - Received Handicap Bonus");
 				break;
-			case HISTORIC_EVENT_AI_TURNS_PASSED:
-				strTemp.Format("HISTORIC EVENT: %d TURNS PASSED - Received Handicap Bonus", pHandicapInfo->getAIDifficultyBonusTurnInterval());
+			case DIFFICULTY_BONUS_ADOPTED_POLICY:
+				strTemp.Format("ADOPTING POLICY - Received Handicap Bonus");
+				break;
+			case DIFFICULTY_BONUS_COMPLETED_POLICY_TREE:
+				strTemp.Format("COMPLETING POLICY TREE - Received Handicap Bonus");
+				break;
+			case DIFFICULTY_BONUS_KILLED_MAJOR_UNIT:
+				strTemp.Format("KILLING MAJOR CIV UNIT - Received Handicap Bonus");
+				break;
+			case DIFFICULTY_BONUS_KILLED_CITY_STATE_UNIT:
+				strTemp.Format("KILLING CITY-STATE UNIT - Received Handicap Bonus");
+				break;
+			case DIFFICULTY_BONUS_KILLED_BARBARIAN_UNIT:
+				strTemp.Format("KILLING BARBARIAN UNIT - Received Handicap Bonus");
+				break;
+			case DIFFICULTY_BONUS_PLAYER_TURNS_PASSED:
+				strTemp.Format("%d TURNS PASSED - Received Handicap Bonus", pHandicapInfo->getDifficultyBonusTurnInterval());
+				break;
+			case DIFFICULTY_BONUS_AI_TURNS_PASSED:
+				strTemp.Format("%d TURNS PASSED - Received Handicap Bonus", pHandicapInfo->getAIDifficultyBonusTurnInterval());
 				break;
 			default:
 				return;
@@ -19804,7 +19835,7 @@ void CvPlayer::DoDifficultyBonus(HistoricEventTypes eHistoricEvent)
 					if (vValidCities.size() > 0)
 					{
 						int iFoodPerCity = iFood / vValidCities.size();
-						int iFoodRemainder = iFood - (iFoodPerCity * vValidCities.size());
+						int iFoodRemainder = iFood % vValidCities.size();
 						if (iFoodPerCity <= 0)
 							iFoodPerCity = 1;
 
@@ -19858,7 +19889,7 @@ void CvPlayer::DoDifficultyBonus(HistoricEventTypes eHistoricEvent)
 					if (vValidCities.size() > 0)
 					{
 						int iProductionPerCity = iProduction / vValidCities.size();
-						int iProductionRemainder = iProduction - (iProductionPerCity * vValidCities.size());
+						int iProductionRemainder = iProduction % vValidCities.size();
 						if (iProductionPerCity <= 0)
 							iProductionPerCity = 1;
 
@@ -20173,7 +20204,7 @@ void CvPlayer::DoDifficultyBonus(HistoricEventTypes eHistoricEvent)
 					if (vValidCities.size() > 0)
 					{
 						int iBGPPerCity = iBorderGrowthPoints / vValidCities.size();
-						int iBGPRemainder = iBorderGrowthPoints - (iBGPPerCity * vValidCities.size());
+						int iBGPRemainder = iBorderGrowthPoints % vValidCities.size();
 						if (iBGPPerCity <= 0)
 							iBGPPerCity = 1;
 
@@ -20283,20 +20314,38 @@ void CvPlayer::DoDifficultyBonus(HistoricEventTypes eHistoricEvent)
 			case HISTORIC_EVENT_TRADE_CS:
 				strTemp.Format("HISTORIC EVENT: TRADE ROUTE (CITY-STATE) - Received Handicap Bonus");
 				break;
-			case HISTORIC_EVENT_CITY_FOUND_CAPITAL:
-				strTemp.Format("HISTORIC EVENT: CAPITAL FOUNDING - Received Handicap Bonus");
+			case DIFFICULTY_BONUS_CITY_FOUND_CAPITAL:
+				strTemp.Format("CAPITAL FOUNDING - Received Handicap Bonus");
 				break;
-			case HISTORIC_EVENT_CITY_FOUND:
-				strTemp.Format("HISTORIC EVENT: CITY FOUNDING - Received Handicap Bonus");
+			case DIFFICULTY_BONUS_CITY_FOUND:
+				strTemp.Format("CITY FOUNDING - Received Handicap Bonus");
 				break;
-			case HISTORIC_EVENT_CITY_CONQUEST:
-				strTemp.Format("HISTORIC EVENT: CITY CONQUEST - Received Handicap Bonus");
+			case DIFFICULTY_BONUS_CITY_CONQUEST:
+				strTemp.Format("CITY CONQUEST - Received Handicap Bonus");
 				break;
-			case HISTORIC_EVENT_PLAYER_TURNS_PASSED:
-				strTemp.Format("HISTORIC EVENT: %d TURNS PASSED - Received Handicap Bonus", pHandicapInfo->getDifficultyBonusTurnInterval());
+			case DIFFICULTY_BONUS_RESEARCHED_TECH:
+				strTemp.Format("RESEARCHING TECH - Received Handicap Bonus");
 				break;
-			case HISTORIC_EVENT_AI_TURNS_PASSED:
-				strTemp.Format("HISTORIC EVENT: %d TURNS PASSED - Received Handicap Bonus", pHandicapInfo->getAIDifficultyBonusTurnInterval());
+			case DIFFICULTY_BONUS_ADOPTED_POLICY:
+				strTemp.Format("ADOPTING POLICY - Received Handicap Bonus");
+				break;
+			case DIFFICULTY_BONUS_COMPLETED_POLICY_TREE:
+				strTemp.Format("COMPLETING POLICY TREE - Received Handicap Bonus");
+				break;
+			case DIFFICULTY_BONUS_KILLED_MAJOR_UNIT:
+				strTemp.Format("KILLING MAJOR CIV UNIT - Received Handicap Bonus");
+				break;
+			case DIFFICULTY_BONUS_KILLED_CITY_STATE_UNIT:
+				strTemp.Format("KILLING CITY-STATE UNIT - Received Handicap Bonus");
+				break;
+			case DIFFICULTY_BONUS_KILLED_BARBARIAN_UNIT:
+				strTemp.Format("KILLING BARBARIAN UNIT - Received Handicap Bonus");
+				break;
+			case DIFFICULTY_BONUS_PLAYER_TURNS_PASSED:
+				strTemp.Format("%d TURNS PASSED - Received Handicap Bonus", pHandicapInfo->getDifficultyBonusTurnInterval());
+				break;
+			case DIFFICULTY_BONUS_AI_TURNS_PASSED:
+				strTemp.Format("%d TURNS PASSED - Received Handicap Bonus", pHandicapInfo->getAIDifficultyBonusTurnInterval());
 				break;
 			default:
 				return;
@@ -20383,7 +20432,7 @@ void CvPlayer::DoDifficultyBonus(HistoricEventTypes eHistoricEvent)
 					if (vValidCities.size() > 0)
 					{
 						int iFoodPerCity = iFood / vValidCities.size();
-						int iFoodRemainder = iFood - (iFoodPerCity * vValidCities.size());
+						int iFoodRemainder = iFood % vValidCities.size();
 						if (iFoodPerCity <= 0)
 							iFoodPerCity = 1;
 
@@ -20433,7 +20482,7 @@ void CvPlayer::DoDifficultyBonus(HistoricEventTypes eHistoricEvent)
 					if (vValidCities.size() > 0)
 					{
 						int iProductionPerCity = iProduction / vValidCities.size();
-						int iProductionRemainder = iProduction - (iProductionPerCity * vValidCities.size());
+						int iProductionRemainder = iProduction % vValidCities.size();
 						if (iProductionPerCity <= 0)
 							iProductionPerCity = 1;
 
@@ -20740,7 +20789,7 @@ void CvPlayer::DoDifficultyBonus(HistoricEventTypes eHistoricEvent)
 					if (vValidCities.size() > 0)
 					{
 						int iBGPPerCity = iBorderGrowthPoints / vValidCities.size();
-						int iBGPRemainder = iBorderGrowthPoints - (iBGPPerCity * vValidCities.size());
+						int iBGPRemainder = iBorderGrowthPoints % vValidCities.size();
 						if (iBGPPerCity <= 0)
 							iBGPPerCity = 1;
 
@@ -25268,7 +25317,7 @@ void CvPlayer::setHasPolicy(PolicyTypes eIndex, bool bNewValue, bool bFree)
 	CvAssertMsg(eIndex >= 0, "eIndex is expected to be non-negative (invalid Index)");
 	CvAssertMsg(eIndex < GC.getNumPolicyInfos(), "eIndex is expected to be within maximum bounds (invalid Index)");
 	
-	if(m_pPlayerPolicies->HasPolicy(eIndex) != bNewValue)
+	if (m_pPlayerPolicies->HasPolicy(eIndex) != bNewValue)
 	{
 		m_pPlayerPolicies->SetPolicy(eIndex, bNewValue, bFree);
 		processPolicies(eIndex, bNewValue ? 1 : -1);
@@ -32489,11 +32538,9 @@ int CvPlayer::GetNumHistoricEvents() const
 }
 int CvPlayer::GetHistoricEventTourism(HistoricEventTypes eHistoricEvent, CvCity* pCity)
 {
-
 	int iTourism = 0;
+	CvString strLogString;
 
-	CvString strLogString; 
-	
 	switch (eHistoricEvent)
 	{
 	case HISTORIC_EVENT_GREAT_PERSON:
@@ -32565,11 +32612,17 @@ int CvPlayer::GetHistoricEventTourism(HistoricEventTypes eHistoricEvent, CvCity*
 			iTourism = pCity->GetSeaTourismBonus();
 		}
 		break;
-	case HISTORIC_EVENT_CITY_FOUND_CAPITAL:
-	case HISTORIC_EVENT_CITY_FOUND:
-	case HISTORIC_EVENT_CITY_CONQUEST:
-	case HISTORIC_EVENT_PLAYER_TURNS_PASSED:
-	case HISTORIC_EVENT_AI_TURNS_PASSED:
+	case DIFFICULTY_BONUS_CITY_FOUND_CAPITAL:
+	case DIFFICULTY_BONUS_CITY_FOUND:
+	case DIFFICULTY_BONUS_CITY_CONQUEST:
+	case DIFFICULTY_BONUS_RESEARCHED_TECH:
+	case DIFFICULTY_BONUS_ADOPTED_POLICY:
+	case DIFFICULTY_BONUS_COMPLETED_POLICY_TREE:
+	case DIFFICULTY_BONUS_KILLED_MAJOR_UNIT:
+	case DIFFICULTY_BONUS_KILLED_CITY_STATE_UNIT:
+	case DIFFICULTY_BONUS_KILLED_BARBARIAN_UNIT:
+	case DIFFICULTY_BONUS_PLAYER_TURNS_PASSED:
+	case DIFFICULTY_BONUS_AI_TURNS_PASSED:
 		break; // These events offer no tourism bonus.
 	}
 
@@ -32628,8 +32681,7 @@ int CvPlayer::GetHistoricEventTourism(HistoricEventTypes eHistoricEvent, CvCity*
 	case HISTORIC_EVENT_TRADE_SEA:
 		iTotalBonus /= 15;
 		break;
-	case HISTORIC_EVENT_CITY_FOUND_CAPITAL:
-	case HISTORIC_EVENT_CITY_FOUND:
+	default:
 		UNREACHABLE();
 	}
 
@@ -33010,11 +33062,8 @@ void CvPlayer::setCapitalCity(CvCity* pNewCapitalCity)
 		if (pNewCapitalCity != NULL)
 		{
 			// Need to set our original capital x,y?
-			if (GetOriginalCapitalX() == -1 || GetOriginalCapitalY() == -1)
-			{
-				m_iOriginalCapitalX = pNewCapitalCity->getX();
-				m_iOriginalCapitalY = pNewCapitalCity->getY();
-			}
+			if (GetOriginalCapitalX() == -1 && pNewCapitalCity->getOriginalOwner() == m_eID)
+				setOriginalCapitalXY(pNewCapitalCity);
 
 			m_iCapitalCityID = pNewCapitalCity->GetID();
 		}
@@ -33039,11 +33088,16 @@ int CvPlayer::GetOriginalCapitalY() const
 //	--------------------------------------------------------------------------------
 void CvPlayer::setOriginalCapitalXY(CvCity* pCapitalCity)
 {
-	if (pCapitalCity != NULL)
+	if (pCapitalCity != NULL && pCapitalCity->plot() != NULL)
 	{
 		m_iOriginalCapitalX = pCapitalCity->getX();
 		m_iOriginalCapitalY = pCapitalCity->getY();
 	}
+}
+void CvPlayer::resetOriginalCapitalXY()
+{
+	m_iOriginalCapitalX = -1;
+	m_iOriginalCapitalY = -1;
 }
 
 //	--------------------------------------------------------------------------------
@@ -49597,11 +49651,11 @@ int CvPlayer::GetNumEffectiveCities(bool bIncludePuppets)
 	if (!bIncludePuppets)
 		iNumCities -= GetNumPuppetCities();
 
-	// Don't count cities where the player hasn't decided yet what to do with them or ones that are currently being razed
+	// Don't count cities where the player hasn't decided yet what to do with them
 	int iLoop = 0;
 	for (const CvCity* pLoopCity = firstCity(&iLoop); pLoopCity != NULL; pLoopCity = nextCity(&iLoop))
 	{
-		if (pLoopCity->IsIgnoreCityForHappiness() || (!MOD_BALANCE_CORE && pLoopCity->IsRazing()))
+		if (pLoopCity->IsIgnoreCityForHappiness())
 		{
 			iNumCities--;
 		}
@@ -49619,16 +49673,18 @@ int CvPlayer::GetNumEffectiveCoastalCities() const
 	int iLoop = 0;
 	for (const CvCity* pLoopCity = firstCity(&iLoop); pLoopCity != NULL; pLoopCity = nextCity(&iLoop))
 	{
-		if (pLoopCity->IsIgnoreCityForHappiness() || pLoopCity->IsRazing())
+		if (pLoopCity->IsIgnoreCityForHappiness())
+			continue;
+
+		// Exclude cities that are being razed and puppets (except Venice)
+		if (pLoopCity->IsRazing())
 			continue;
 
 		if (CityStrategyAIHelpers::IsTestCityStrategy_IsPuppetAndAnnexable(pLoopCity))
 			continue;
 
-		if (pLoopCity->IsOccupied() && !pLoopCity->IsNoOccupiedUnhappiness())
-			continue;
-
-		if (pLoopCity->isCoastal())
+		// Require a decently-sized body of water
+		if (pLoopCity->isCoastal(10))
 			iNum++;
 	}
 
