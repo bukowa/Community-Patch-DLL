@@ -2427,11 +2427,13 @@ void CvMinorCivQuest::DoStartQuest(int iStartTurn, PlayerTypes pCallingPlayer)
 	{
 		UnitTypes eUnitType = pMinor->GetMinorCivAI()->GetBestUnitGiftFromPlayer(m_eAssignedPlayer);
 		m_iData1 = eUnitType;
+		m_iData2 = pMinor->GetMinorCivAI()->GetExperienceForUnitGiftQuest(m_eAssignedPlayer, eUnitType);
 
 		const char* strUnitName = GC.getUnitInfo(eUnitType)->GetDescriptionKey();
 
 		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_GIFT_SPECIFIC_UNIT");
 		strMessage << strUnitName;
+		strMessage << m_iData2;
 		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_QUEST_GIFT_SPECIFIC_UNIT");
 		strSummary << strUnitName;
 		break;
@@ -6640,7 +6642,11 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 	}
 	case MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT:
 	{
-		if (GetBestUnitGiftFromPlayer(ePlayer) == NO_UNIT)
+		UnitTypes eUnit = GetBestUnitGiftFromPlayer(ePlayer);
+		if (eUnit == NO_UNIT)
+			return false;
+
+		if (GetExperienceForUnitGiftQuest(ePlayer, eUnit) == 0)
 			return false;
 
 		break;
@@ -9444,6 +9450,38 @@ UnitTypes CvMinorCivAI::GetBestUnitGiftFromPlayer(PlayerTypes ePlayer)
 
 	int iRandIndex = GC.getGame().getSmallFakeRandNum(veUnitChoices.size(), m_pPlayer->GetPseudoRandomSeed() + GET_PLAYER(ePlayer).GetPseudoRandomSeed() + veUnitChoices.size());
 	return veUnitChoices[iRandIndex];
+}
+
+int CvMinorCivAI::GetExperienceForUnitGiftQuest(PlayerTypes ePlayer, UnitTypes eUnitType)
+{
+	int iExperience = 0;
+	int iLoop = 0;
+	for (CvCity* pLoopCity = GET_PLAYER(ePlayer).firstCity(&iLoop); pLoopCity != NULL; pLoopCity = GET_PLAYER(ePlayer).nextCity(&iLoop))
+	{
+		if (!pLoopCity->IsPuppet() && !pLoopCity->IsRazing())
+		{
+			iExperience = max(iExperience, pLoopCity->getProductionExperience(eUnitType));
+		}
+	}
+	return iExperience;
+}
+
+bool CvMinorCivAI::IsUnitValidGiftForCityStateQuest(PlayerTypes ePlayer, CvUnit* pUnit)
+{
+	if (ePlayer < 0 || ePlayer >= MAX_MAJOR_CIVS)
+		return false;
+
+	if (pUnit == NULL)
+		return false;
+
+	if (IsActiveQuestForPlayer(ePlayer, MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT))
+	{
+		if ((UnitTypes)GetQuestData1(ePlayer, MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT) == pUnit->getUnitType() && GetQuestData2(ePlayer, MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT) * 100 <= pUnit->getExperienceTimes100())
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 bool CvMinorCivAI::GetHasSentUnitForQuest(PlayerTypes ePlayer)
@@ -15594,13 +15632,10 @@ void CvMinorCivAI::DoUnitGiftFromMajor(PlayerTypes eFromPlayer, CvUnit*& pGiftUn
 	int iInfluence = GetFriendshipFromUnitGift(eFromPlayer, pGiftUnit->IsGreatPerson(), bDistanceGift);
 	ChangeFriendshipWithMajor(eFromPlayer, iInfluence);
 
-	if (IsActiveQuestForPlayer(eFromPlayer, MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT))
+	if (IsUnitValidGiftForCityStateQuest(eFromPlayer, pGiftUnit))
 	{
-		if ((UnitTypes)GetQuestData1(eFromPlayer, MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT) == pGiftUnit->getUnitType())
-		{
-			SetHasSentUnitForQuest(eFromPlayer, true);
-			DoTestActiveQuestsForPlayer(eFromPlayer, true, false, MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT);
-		}
+		SetHasSentUnitForQuest(eFromPlayer, true);
+		DoTestActiveQuestsForPlayer(eFromPlayer, true, false, MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT);
 	}
 
 #if defined(MOD_EVENTS_MINORS_INTERACTION)

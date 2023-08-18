@@ -539,6 +539,8 @@ public:
 	BuildingTypes GetBestBuildingForQuest(PlayerTypes ePlayer, int iDuration);
 	CvCity* GetBestSpyTarget(PlayerTypes ePlayer, bool bMinor);
 	UnitTypes GetBestUnitGiftFromPlayer(PlayerTypes ePlayer);
+	int GetExperienceForUnitGiftQuest(PlayerTypes ePlayer, UnitTypes eUnitType);
+	bool IsUnitValidGiftForCityStateQuest(PlayerTypes ePlayer, CvUnit* pUnit);
 	bool GetHasSentUnitForQuest(PlayerTypes ePlayer);
 	void SetHasSentUnitForQuest(PlayerTypes ePlayer, bool bValue);
 	void SetCoupAttempted(PlayerTypes ePlayer, bool bValue);
