@@ -1847,6 +1847,23 @@ bool CvMinorCivQuest::IsExpired()
 		if (pkUnitInfo->GetDomainType() == DOMAIN_SEA && !pMinor->getCapitalCity()->isCoastal(10))
 			return true;
 
+		// Can we train the unit type this unit upgrades to?
+		bool bCanUpgrade = false;
+		for (int iI = 0; iI < GC.getNumUnitClassInfos(); iI++)
+		{
+			const UnitClassTypes eUnitClass = static_cast<UnitClassTypes>(iI);
+			CvUnitClassInfo* pkUnitClassInfo = GC.getUnitClassInfo(eUnitClass);
+			if (pkUnitClassInfo && pkUnitInfo->GetUpgradeUnitClass(iI))
+			{
+				UnitTypes eUpgradeUnit = GET_PLAYER(m_eAssignedPlayer).GetSpecificUnitType(eUnitClass);
+				if (GET_PLAYER(m_eAssignedPlayer).canTrainUnit(eUpgradeUnit, false, false, false, false))
+				{
+					bCanUpgrade = true;
+					break;
+				}
+			}
+		}
+
 		// Are any versions of the original unit still around?
 		bool bAlreadyHasUnit = false;
 		int iLoop = 0;
@@ -1861,6 +1878,10 @@ bool CvMinorCivQuest::IsExpired()
 
 		if (!bAlreadyHasUnit)
 		{
+			// Can upgrade it and don't already have it? Invalidated!
+			if (bCanUpgrade)
+				return true;
+
 			// Make sure at least one of the player's cities can train this unit
 			bool bNoValidCity = true;
 			int iCityLoop = 0;
@@ -9375,6 +9396,25 @@ UnitTypes CvMinorCivAI::GetBestUnitGiftFromPlayer(PlayerTypes ePlayer)
 			if (pkPromotionInfo && pkUnitInfo->GetFreePromotions(iLoop))
 			{
 				if (pkPromotionInfo->IsOnlyDefensive() || pkPromotionInfo->IsHoveringUnit())
+				{
+					bValid = false;
+					break;
+				}
+			}
+		}
+		if (!bValid)
+			continue;
+
+		// Can we train the unit type this unit upgrades to?
+		bValid = true;
+		for (int iI = 0; iI < GC.getNumUnitClassInfos(); iI++)
+		{
+			const UnitClassTypes eUnitClass = static_cast<UnitClassTypes>(iI);
+			CvUnitClassInfo* pkUnitClassInfo = GC.getUnitClassInfo(eUnitClass);
+			if (pkUnitClassInfo && pkUnitInfo->GetUpgradeUnitClass(iI))
+			{
+				UnitTypes eUpgradeUnit = GET_PLAYER(ePlayer).GetSpecificUnitType(eUnitClass);
+				if (GET_PLAYER(ePlayer).canTrainUnit(eUpgradeUnit, false, false, false, false))
 				{
 					bValid = false;
 					break;
