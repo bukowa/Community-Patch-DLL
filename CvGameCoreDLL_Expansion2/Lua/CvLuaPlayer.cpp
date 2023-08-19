@@ -1162,6 +1162,7 @@ void CvLuaPlayer::PushMethods(lua_State* L, int t)
 	Method(GetTotalValueToMe);
 	Method(GetRandomIntrigue);
 	Method(GetCachedValueOfPeaceWithHuman);
+	Method(GetSpyPoints);
 	Method(GetSpyChanceAtCity);
 	Method(GetCityPotentialInfo);
 	Method(DoSpyEvent);
@@ -15790,6 +15791,12 @@ int CvLuaPlayer::lGetCachedValueOfPeaceWithHuman(lua_State* L)
 	lua_pushinteger(L, iResult);
 	return 1;
 }
+//------------------------------------------------------------------------------
+//int GetSpyPoints();
+int CvLuaPlayer::lGetSpyPoints(lua_State* L)
+{
+	return BasicLuaMethod(L, &CvPlayerAI::GetSpyPoints);
+}
 int CvLuaPlayer::lGetSpyChanceAtCity(lua_State* L)
 {
 	CvPlayerAI* pkThisPlayer = GetInstance(L);
@@ -16137,7 +16144,7 @@ int CvLuaPlayer::lGetEspionageSpies(lua_State* L)
 int CvLuaPlayer::lEspionageCreateSpy(lua_State* L)
 {
 	CvPlayer* pkPlayer = GetInstance(L);
-	pkPlayer->GetEspionage()->CreateSpy();
+	pkPlayer->CreateSpies(1, false);
 
 	return 0;
 }

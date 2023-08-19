@@ -812,6 +812,8 @@ public:
 	void ChangeEspionageTurnsModifierEnemy(int iChange);
 	int GetStartingSpyRank() const;
 	void ChangeStartingSpyRank(int iChange);
+	int GetSpyPoints(bool bTotal) const;
+	void CreateSpies(int iNumSpies, bool bScaling = true);
 	// END Espionage
 
 #if defined(MOD_RELIGION_CONVERSION_MODIFIERS)
@@ -1729,6 +1731,7 @@ public:
 	bool IsHasBetrayedMinorCiv() const;
 	void SetHasBetrayedMinorCiv(bool bValue);
 
+	void setEverAlive(bool bNewValue);
 	void setAlive(bool bNewValue, bool bNotify = true);
 	void verifyAlive(PlayerTypes eKiller = NO_PLAYER);
 	bool isAlive() const
@@ -3092,6 +3095,8 @@ protected:
 	int m_iEspionageModifier;
 	int m_iEspionageTurnsModifierFriendly;
 	int m_iEspionageTurnsModifierEnemy;
+	int m_iSpyPoints;
+	int m_iSpyPointsTotal;
 	int m_iSpyStartingRank;
 #if defined(MOD_RELIGION_CONVERSION_MODIFIERS)
 	int m_iConversionModifier;
@@ -3931,6 +3936,8 @@ SYNC_ARCHIVE_VAR(int, m_iHappinessPerXGreatWorks)
 SYNC_ARCHIVE_VAR(int, m_iEspionageModifier)
 SYNC_ARCHIVE_VAR(int, m_iEspionageTurnsModifierFriendly)
 SYNC_ARCHIVE_VAR(int, m_iEspionageTurnsModifierEnemy)
+SYNC_ARCHIVE_VAR(int, m_iSpyPoints)
+SYNC_ARCHIVE_VAR(int, m_iSpyPointsTotal)
 SYNC_ARCHIVE_VAR(int, m_iSpyStartingRank)
 SYNC_ARCHIVE_VAR(int, m_iConversionModifier)
 SYNC_ARCHIVE_VAR(int, m_iFoodInCapitalFromAnnexedMinors)

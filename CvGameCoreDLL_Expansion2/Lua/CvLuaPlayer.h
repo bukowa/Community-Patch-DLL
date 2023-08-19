@@ -1265,6 +1265,7 @@ protected:
 	static int lIsTradeSanctioned(lua_State* L);
 	static int lIsTradeItemValuedImpossible(lua_State* L);
 	static int lGetTotalValueToMeNormal(lua_State* L);
+	static int lGetSpyPoints(lua_State* L);
 	static int lGetSpyChanceAtCity(lua_State* L);
 	static int lGetCityPotentialInfo(lua_State* L);
 	static int lDoSpyEvent(lua_State* L);
