@@ -1740,6 +1740,16 @@ bool CvMinorCivQuest::IsExpired()
 	}
 	case MINOR_CIV_QUEST_FIND_NATURAL_WONDER:
 	{
+		int iNumFoundBefore = GetPrimaryData();
+		int iNumInWorld = GC.getMap().GetNumNaturalWonders();
+
+		// Sanity check in case the number of Natural Wonders changed for some reason
+		if (iNumFoundBefore >= iNumInWorld)
+			return true;
+
+		if (GET_TEAM(GET_PLAYER(m_eAssignedPlayer).getTeam()).GetNumNaturalWondersDiscovered() >= iNumInWorld)
+			return true;
+
 		break;
 	}
 	case MINOR_CIV_QUEST_CONTEST_CULTURE:
