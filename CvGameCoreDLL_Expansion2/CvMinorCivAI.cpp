@@ -1982,9 +1982,45 @@ bool CvMinorCivQuest::IsExpired()
 		if (GET_PLAYER(eCityOwner).getTeam() == pAssignedPlayer->getTeam())
 			return true;
 
+		// The quest giver conquered the city.
+		if (GET_PLAYER(eCityOwner).getTeam() == pMinor->getTeam())
+			return true;
+
+		// The quest giver's ally conquered the city.
+		PlayerTypes eAlly = pMinor->GetMinorCivAI()->GetAlly();
+		if (eAlly != NO_PLAYER && GET_PLAYER(eAlly).getTeam() == GET_PLAYER(eCityOwner).getTeam())
+			return true;
+
 		// We can't liberate this city for some reason.
 		if (GET_PLAYER(m_eAssignedPlayer).GetPlayerToLiberate(pTargetCity) != eTargetPlayer)
 			return true;
+
+		// We can't go to war with the owner of this city.
+		if (!GET_PLAYER(m_eAssignedPlayer).IsAtWarWith(eCityOwner) && !GET_TEAM(pAssignedPlayer->getTeam()).canDeclareWar(GET_PLAYER(eCityOwner).getTeam(), m_eAssignedPlayer))
+			return true;
+
+		// Is the city owner now an unacceptable target (backstabbing)?
+		if (GET_PLAYER(eCityOwner).isMajorCiv())
+		{
+			if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_LIBERATION, m_eAssignedPlayer, eCityOwner))
+				return true;
+		}
+		else if (GET_PLAYER(eCityOwner).isMinorCiv())
+		{
+			PlayerTypes eCityOwnerAlly = GET_PLAYER(eCityOwner).GetMinorCivAI()->GetAlly();
+			if (eCityOwnerAlly != NO_PLAYER && GET_PLAYER(eCityOwnerAlly).getTeam() == pAssignedPlayer->getTeam())
+				return true;
+
+			vector<PlayerTypes> vPlayerTeam = GET_TEAM(pAssignedPlayer->getTeam()).getPlayers();
+			for (size_t i=0; i<vPlayerTeam.size(); i++)
+			{
+				if (!GET_PLAYER(vPlayerTeam[i]).isAlive() || !GET_PLAYER(vPlayerTeam[i]).isMajorCiv())
+					return true;
+
+				if (GET_PLAYER(eCityOwner).GetMinorCivAI()->IsProtectedByMajor(vPlayerTeam[i]))
+					return true;
+			}
+		}
 
 		break;
 	}
@@ -8965,6 +9001,31 @@ PlayerTypes CvMinorCivAI::GetBestCityStateLiberate(PlayerTypes ePlayer)
 		TeamTypes eConquerorTeam = GET_TEAM(eConqueredTeam).GetKilledByTeam();
 		if (eConquerorTeam == GET_PLAYER(ePlayer).getTeam())
 			continue;
+
+		if (!GET_PLAYER(ePlayer).IsAtWarWith(eCityOwner) && !GET_TEAM(GET_PLAYER(ePlayer).getTeam()).canDeclareWar(eCityOwnerTeam, ePlayer))
+			continue;
+
+		if (GET_PLAYER(eCityOwner).isMajorCiv())
+		{
+			if (!IsAcceptableQuestEnemy(MINOR_CIV_QUEST_LIBERATION, ePlayer, eCityOwner))
+				continue;
+		}
+		else if (GET_PLAYER(eCityOwner).isMinorCiv())
+		{
+			PlayerTypes eCityOwnerAlly = GET_PLAYER(eCityOwner).GetMinorCivAI()->GetAlly();
+			if (eCityOwnerAlly != NO_PLAYER && GET_PLAYER(eCityOwnerAlly).getTeam() == GET_PLAYER(ePlayer).getTeam())
+				continue;
+
+			vector<PlayerTypes> vPlayerTeam = GET_TEAM(GET_PLAYER(ePlayer).getTeam()).getPlayers();
+			for (size_t i=0; i<vPlayerTeam.size(); i++)
+			{
+				if (!GET_PLAYER(vPlayerTeam[i]).isAlive() || !GET_PLAYER(vPlayerTeam[i]).isMajorCiv())
+					continue;
+
+				if (GET_PLAYER(eCityOwner).GetMinorCivAI()->IsProtectedByMajor(vPlayerTeam[i]))
+					continue;
+			}
+		}
 
 		veValidTargets.push_back(eTarget);
 	}
