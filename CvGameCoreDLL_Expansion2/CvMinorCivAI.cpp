@@ -2115,10 +2115,52 @@ bool CvMinorCivQuest::IsExpired()
 	}
 	case MINOR_CIV_QUEST_UNIT_GET_CITY:
 	{
-		// No city here anymore, and we didn't destroy it?
 		CvPlot* pPlot = GC.getMap().plot(m_iData1, m_iData2);
-		if (!pPlot->isCity() && pPlot->GetPlayerThatDestroyedCityHere() != m_eAssignedPlayer)
-			return true;
+		PlayerTypes eCityOwner = pPlot->getOwner();
+		if (!pPlot->isCity())
+		{
+			// No city here anymore, and we didn't destroy it?
+			if (pPlot->GetPlayerThatDestroyedCityHere() != m_eAssignedPlayer)
+				return true;
+		}
+		else if (eCityOwner != m_eAssignedPlayer)
+		{
+			// The quest giver conquered the city.
+			if (GET_PLAYER(eCityOwner).getTeam() == pMinor->getTeam())
+				return true;
+
+			// The quest giver's ally conquered the city.
+			PlayerTypes eAlly = pMinor->GetMinorCivAI()->GetAlly();
+			if (eAlly != NO_PLAYER && GET_PLAYER(eAlly).getTeam() == GET_PLAYER(eCityOwner).getTeam())
+				return true;
+
+			// We can't go to war with the owner of this city.
+			if (!GET_PLAYER(m_eAssignedPlayer).IsAtWarWith(eCityOwner) && !GET_TEAM(pAssignedPlayer->getTeam()).canDeclareWar(GET_PLAYER(eCityOwner).getTeam(), m_eAssignedPlayer))
+				return true;
+
+			// Is the city owner now an unacceptable target (backstabbing)?
+			if (GET_PLAYER(eCityOwner).isMajorCiv())
+			{
+				if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_UNIT_GET_CITY, m_eAssignedPlayer, eCityOwner))
+					return true;
+			}
+			else if (GET_PLAYER(eCityOwner).isMinorCiv())
+			{
+				PlayerTypes eCityOwnerAlly = GET_PLAYER(eCityOwner).GetMinorCivAI()->GetAlly();
+				if (eCityOwnerAlly != NO_PLAYER && GET_PLAYER(eCityOwnerAlly).getTeam() == pAssignedPlayer->getTeam())
+					return true;
+
+				vector<PlayerTypes> vPlayerTeam = GET_TEAM(pAssignedPlayer->getTeam()).getPlayers();
+				for (size_t i=0; i<vPlayerTeam.size(); i++)
+				{
+					if (!GET_PLAYER(vPlayerTeam[i]).isAlive() || !GET_PLAYER(vPlayerTeam[i]).isMajorCiv())
+						return true;
+
+					if (GET_PLAYER(eCityOwner).GetMinorCivAI()->IsProtectedByMajor(vPlayerTeam[i]))
+						return true;
+				}
+			}
+		}
 
 		break;
 	}
@@ -9289,6 +9331,7 @@ CvCity* CvMinorCivAI::GetBestCityForQuest(PlayerTypes ePlayer)
 {
 	int iMinDistance = INT_MAX;
 	CvCity* pBestCity = NULL;
+	vector<PlayerTypes> vPlayerTeam = GET_TEAM(GET_PLAYER(ePlayer).getTeam()).getPlayers();
 
 	for (int iTargetLoop = 0; iTargetLoop < MAX_MAJOR_CIVS; iTargetLoop++)
 	{
@@ -9297,25 +9340,41 @@ CvCity* CvMinorCivAI::GetBestCityForQuest(PlayerTypes ePlayer)
 		if (!GET_PLAYER(eTarget).isAlive())
 			continue;
 
-		if (GET_PLAYER(ePlayer).getTeam() == GET_PLAYER(eTarget).getTeam())
+		// Don't commission war against ourselves!
+		if (GET_PLAYER(eTarget).getTeam() == GetPlayer()->getTeam())
 			continue;
 
-		if (GET_PLAYER(ePlayer).GetDiplomacyAI()->IsDoFAccepted(eTarget))
+		// Or our ally!
+		if (GetAlly() != NO_PLAYER && GET_PLAYER(GetAlly()).getTeam() == GET_PLAYER(eTarget).getTeam())
 			continue;
 
-		if (GET_TEAM(GET_PLAYER(ePlayer).getTeam()).IsVassal(GET_PLAYER(eTarget).getTeam()))
+		// Can't go to war with this player.
+		if (!GET_PLAYER(ePlayer).IsAtWarWith(eTarget) && !GET_TEAM(GET_PLAYER(ePlayer).getTeam()).canDeclareWar(GET_PLAYER(eTarget).getTeam(), ePlayer))
 			continue;
 
-		if (GET_TEAM(GET_PLAYER(eTarget).getTeam()).IsVassal(GET_PLAYER(ePlayer).getTeam()))
-			continue;
+		// Is the city owner an unacceptable target (same team, haven't met, backstabbing)?
+		if (GET_PLAYER(eTarget).isMajorCiv())
+		{
+			if (!IsAcceptableQuestEnemy(MINOR_CIV_QUEST_UNIT_GET_CITY, ePlayer, eTarget))
+				continue;
+		}
+		else if (GET_PLAYER(eTarget).isMinorCiv())
+		{
+			PlayerTypes eTargetAlly = GET_PLAYER(eTarget).GetMinorCivAI()->GetAlly();
+			if (eTargetAlly != NO_PLAYER && GET_PLAYER(eTargetAlly).getTeam() == GET_PLAYER(ePlayer).getTeam())
+				continue;
 
-		if (!GET_TEAM(GET_PLAYER(ePlayer).getTeam()).isHasMet(GET_PLAYER(eTarget).getTeam()))
-			continue;
+			for (size_t i=0; i<vPlayerTeam.size(); i++)
+			{
+				if (!GET_PLAYER(vPlayerTeam[i]).isAlive() || !GET_PLAYER(vPlayerTeam[i]).isMajorCiv())
+					continue;
+
+				if (GET_PLAYER(eTarget).GetMinorCivAI()->IsProtectedByMajor(vPlayerTeam[i]))
+					continue;
+			}
+		}
 
 		if (GET_PLAYER(ePlayer).GetProximityToPlayer(eTarget) < PLAYER_PROXIMITY_CLOSE)
-			continue;
-
-		if (GetAlly() != NO_PLAYER && GET_PLAYER(GetAlly()).getTeam() == GET_PLAYER(eTarget).getTeam())
 			continue;
 
 		int iCityLoop = 0;
