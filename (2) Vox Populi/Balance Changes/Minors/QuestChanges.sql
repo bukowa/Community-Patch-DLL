@@ -121,7 +121,7 @@ UPDATE SmallAwards SET Influence = '30', Gold = '100', RandomMod = '10', QuestDu
 UPDATE SmallAwards SET Influence = '40', Production = '75', RandomMod = '10', QuestDuration = '50' WHERE Type = 'MINOR_CIV_QUEST_BUILD_X_BUILDINGS';
 
 -- Stealing
-UPDATE SmallAwards SET Influence = '60', Science = '150', RandomMod = '10', QuestDuration = '50'  WHERE Type = 'MINOR_CIV_QUEST_UNIT_STEAL_FROM';
+UPDATE SmallAwards SET Influence = '60', Science = '150', RandomMod = '10' WHERE Type = 'MINOR_CIV_QUEST_UNIT_STEAL_FROM';
 
 -- Coup
 UPDATE SmallAwards SET Influence = '40', CapitalGPPoints = '150', RandomMod = '10', QuestDuration = '50' WHERE Type = 'MINOR_CIV_QUEST_UNIT_COUP_CITY';
