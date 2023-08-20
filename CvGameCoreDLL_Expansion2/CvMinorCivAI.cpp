@@ -1799,6 +1799,14 @@ bool CvMinorCivQuest::IsExpired()
 		if (pAssignedPlayer->isHuman() && GET_PLAYER(eTargetPlayer).isHuman())
 			return true;
 
+		// We're now Allies with the Major
+		if (pMinor->GetMinorCivAI()->GetAlly() == eTargetPlayer)
+			return true;
+
+		// Is this now a bad target (backstabbing)?
+		if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_DENOUNCE_MAJOR, m_eAssignedPlayer, eTargetPlayer))
+			return true;
+
 		break;
 	}
 	case MINOR_CIV_QUEST_SPREAD_RELIGION:
@@ -1828,7 +1836,8 @@ bool CvMinorCivQuest::IsExpired()
 		PlayerTypes eTargetPlayer = (PlayerTypes) GetPrimaryData();
 
 		// We're now Allies with the Major
-		if (pMinor->GetMinorCivAI()->GetAlly() == eTargetPlayer)
+		PlayerTypes eAlly = pMinor->GetMinorCivAI()->GetAlly();
+		if (eAlly != NO_PLAYER && GET_PLAYER(eAlly).getTeam() == GET_PLAYER(eTargetPlayer).getTeam())
 			return true;
 
 		// Someone killed the Major
@@ -1837,6 +1846,10 @@ bool CvMinorCivQuest::IsExpired()
 
 		// We can't go to war with the Major
 		if (!GET_PLAYER(m_eAssignedPlayer).IsAtWarWith(eTargetPlayer) && !GET_TEAM(pAssignedPlayer->getTeam()).canDeclareWar(GET_PLAYER(eTargetPlayer).getTeam(), m_eAssignedPlayer))
+			return true;
+
+		// Is this now a bad target (backstabbing)?
+		if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_DENOUNCE_MAJOR, m_eAssignedPlayer, eTargetPlayer))
 			return true;
 
 		break;
@@ -6590,24 +6603,28 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 		if (GC.getGame().isOption(GAMEOPTION_NO_CHANGING_WAR_PEACE))
 			return false;
 
-		// Is there a recent bully that isn't on this player's team?
+		// Is there a recent bully?
 		if (!IsRecentlyBulliedByAnyMajor())
 			return false;
 
 		PlayerTypes eMostRecentBully = GetMostRecentBullyForQuest();
-		if (eMostRecentBully == NO_PLAYER || GET_PLAYER(eMostRecentBully).getTeam() == GET_PLAYER(ePlayer).getTeam())
+		if (eMostRecentBully == NO_PLAYER)
+			return false;
+
+		// This player must not be the ally
+		if (GetAlly() == eMostRecentBully)
 			return false;
 
 		// Humans are unable to denounce each other
 		if (GET_PLAYER(ePlayer).isHuman() && GET_PLAYER(eMostRecentBully).isHuman())
 			return false;
 
-		// This player must have met the most recent bully
-		if (!GET_TEAM(GET_PLAYER(ePlayer).getTeam()).isHasMet(GET_PLAYER(eMostRecentBully).getTeam()))
-			return false;
-
 		// This player must not have already denounced the most recent bully
 		if (GET_PLAYER(ePlayer).GetDiplomacyAI()->IsDenouncedPlayer(eMostRecentBully))
+			return false;
+
+		// Is this a bad target? (Same team, haven't met, backstabbing?)
+		if (!IsAcceptableQuestEnemy(MINOR_CIV_QUEST_DENOUNCE_MAJOR, ePlayer, eMostRecentBully))
 			return false;
 
 		break;
@@ -6652,20 +6669,16 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 		if (GC.getGame().isOption(GAMEOPTION_NO_CHANGING_WAR_PEACE))
 			return false;
 
-		// Is there a recent bully that isn't on this player's team?
+		// Is there a recent bully?
 		if (!IsRecentlyBulliedByAnyMajor())
 			return false;
 
 		PlayerTypes eMostRecentBully = GetMostRecentBullyForQuest();
-		if (eMostRecentBully == NO_PLAYER || GET_PLAYER(eMostRecentBully).getTeam() == GET_PLAYER(ePlayer).getTeam())
+		if (eMostRecentBully == NO_PLAYER)
 			return false;
 
 		// This player must not be the ally
-		if (eMostRecentBully == GetAlly())
-			return false;
-
-		// This player must have met the most recent bully
-		if (!GET_TEAM(GET_PLAYER(ePlayer).getTeam()).isHasMet(GET_PLAYER(eMostRecentBully).getTeam()))
+		if (GetAlly() != NO_PLAYER && GET_PLAYER(eMostRecentBully).getTeam() == GET_PLAYER(GetAlly()).getTeam())
 			return false;
 
 		// This player must not be at war with the most recent bully
@@ -6674,6 +6687,10 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 
 		// This player must be able to declare war on the most recent bully
 		if (!GET_TEAM(GET_PLAYER(ePlayer).getTeam()).canDeclareWar(GET_PLAYER(eMostRecentBully).getTeam(), ePlayer))
+			return false;
+
+		// Is this a bad target? (Same team, haven't met, backstabbing?)
+		if (!IsAcceptableQuestEnemy(MINOR_CIV_QUEST_WAR, ePlayer, eMostRecentBully))
 			return false;
 
 		break;
