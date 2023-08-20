@@ -91,6 +91,7 @@ local ktQuestsIcon = {
 	[ MinorCivQuestTypes.MINOR_CIV_QUEST_SPREAD_RELIGION or false ] = function(i) local row = GameInfo.Religions[i] return row and row.IconString or "" end,
 	[ MinorCivQuestTypes.MINOR_CIV_QUEST_TRADE_ROUTE or false ] = function() return "[ICON_INTERNATIONAL_TRADE]" end,
 -- VP
+	[ MinorCivQuestTypes.MINOR_CIV_QUEST_FIND_CITY or false ] = function() return "[ICON_CAPITAL]" end,
 	[ MinorCivQuestTypes.MINOR_CIV_QUEST_WAR or false ] = function() return "[ICON_SILVER_FIST]" end,
 	[ MinorCivQuestTypes.MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER or false ] = function() return "[ICON_TRADE_WHITE]" end,
 	[ MinorCivQuestTypes.MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT or false ] = function() return "[ICON_STRENGTH]" end,
@@ -140,6 +141,7 @@ if gk_mode then
 		MinorCivQuestTypes.MINOR_CIV_QUEST_BULLY_CITY_STATE or false,	-- g&k+
 		MinorCivQuestTypes.MINOR_CIV_QUEST_FIND_NATURAL_WONDER or false,	-- vanilla+ but NOT civBE
 		MinorCivQuestTypes.MINOR_CIV_QUEST_FIND_PLAYER or false,		-- vanilla+
+		MinorCivQuestTypes.MINOR_CIV_QUEST_FIND_CITY or false,			-- VP
 		MinorCivQuestTypes.MINOR_CIV_QUEST_KILL_CITY_STATE or false,	-- vanilla+
 		MinorCivQuestTypes.MINOR_CIV_QUEST_FIND_CITY_STATE or false, -- VP
 		MinorCivQuestTypes.MINOR_CIV_QUEST_GREAT_PERSON or false,	-- vanilla+
@@ -704,6 +706,8 @@ local function QuestString(majorPlayerID, minorPlayer, questID, questData1, ques
 		return L( "TXT_KEY_CITY_STATE_QUEST_KILL_CITY_STATE_FORMAL", Players[questData1]:GetNameKey() )
 	elseif questID == MinorCivQuestTypes.MINOR_CIV_QUEST_FIND_PLAYER then
 		return L( "TXT_KEY_CITY_STATE_QUEST_FIND_PLAYER_FORMAL", Players[questData1]:GetCivilizationShortDescriptionKey() )
+	elseif questID == MinorCivQuestTypes.MINOR_CIV_QUEST_FIND_CITY then
+		return L( "TXT_KEY_CITY_STATE_QUEST_FIND_CITY_FORMAL", minorPlayer:GetTargetCityString(majorPlayerID , questID ))
 	elseif civ5_mode and questID == MinorCivQuestTypes.MINOR_CIV_QUEST_FIND_NATURAL_WONDER then
 		return L( "TXT_KEY_CITY_STATE_QUEST_FIND_NATURAL_WONDER_FORMAL" )
 	elseif gk_mode then

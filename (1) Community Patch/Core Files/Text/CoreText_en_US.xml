@@ -2443,6 +2443,23 @@
 
 		<!-- NEW CS Quests -->
 
+		<!-- Find City -->
+		<Row Tag="TXT_KEY_CITY_STATE_QUEST_FIND_CITY_FORMAL">
+			<Text>They want you to find the city of {@1_CityName}.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_NOTIFICATION_QUEST_FIND_CITY">
+			<Text>{@2_CivName} is looking for new trade opportunities. They have heard of a distant city named "{@1_CityName}." If you are able to find the city of {@1_CityName}, you will be rewarded.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_NOTIFICATION_SUMMARY_QUEST_FIND_CITY">
+			<Text>{@2_CivName} seeks {@1_CityName}</Text>
+		</Row>
+		<Row Tag="TXT_KEY_NOTIFICATION_QUEST_COMPLETE_FIND_CITY">
+			<Text>Your discovery of {@1_CityName} has greatly pleased the merchants of {@2_MinorCivName}.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_NOTIFICATION_SUMMARY_QUEST_COMPLETE_FIND_CITY">
+			<Text>{@1_CityName} discovered for {@2_CivName}!</Text>
+		</Row>
+
 		<!-- Capture City -->
 		<Row Tag="TXT_KEY_NOTIFICATION_QUEST_CAPTURE_CITY">
 			<Text>Tactical experts from {@2_CivName} believe {@1_CityName} to be of significant strategic importance. Acquire it by any means, and you will be greatly rewarded!</Text>
@@ -7223,6 +7240,9 @@
 		</Row>
 		<Row Tag="TXT_KEY_MINOR_CIV_QUEST_FIND_PLAYER_NAME">
 			<Text>Find Player</Text>
+		</Row>
+		<Row Tag="TXT_KEY_MINOR_CIV_QUEST_FIND_CITY_NAME">
+			<Text>Find City</Text>
 		</Row>
 		<Row Tag="TXT_KEY_MINOR_CIV_QUEST_FIND_NATURAL_WONDER_NAME">
 			<Text>Find Natural Wonder</Text>

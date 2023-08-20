@@ -1386,6 +1386,11 @@ bool CvMinorCivQuest::IsComplete()
 		// Player found the target player?
 		return GET_TEAM(pAssignedPlayer->getTeam()).IsHasFoundPlayersTerritory(ePlayerToFind);
 	}
+	case MINOR_CIV_QUEST_FIND_CITY:
+	{
+		CvPlot* pPlot = GC.getMap().plot(m_iData1, m_iData2);
+		return pPlot->isCity() && pPlot->isRevealed(pAssignedPlayer->getTeam());
+	}
 	case MINOR_CIV_QUEST_FIND_NATURAL_WONDER:
 	{
 		int iNumWondersFoundBefore = m_iData1;
@@ -1733,6 +1738,15 @@ bool CvMinorCivQuest::IsExpired()
 		// Someone killed the player
 		PlayerTypes eTargetPlayer = (PlayerTypes) GetPrimaryData();
 		if (!GET_PLAYER(eTargetPlayer).isAlive())
+			return true;
+
+		break;
+	}
+	case MINOR_CIV_QUEST_FIND_CITY:
+	{
+		// No city here anymore?
+		CvPlot* pPlot = GC.getMap().plot(m_iData1, m_iData2);
+		if (!pPlot->isCity())
 			return true;
 
 		break;
@@ -2388,6 +2402,20 @@ void CvMinorCivQuest::DoStartQuest(int iStartTurn, PlayerTypes pCallingPlayer)
 		strMessage << strCivKey;
 		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_QUEST_FIND_PLAYER");
 		strSummary << strCivKey;
+		break;
+	}
+	case MINOR_CIV_QUEST_FIND_CITY:
+	{
+		CvCity* pCityToFind = pMinor->GetMinorCivAI()->GetBestCityToFind(m_eAssignedPlayer);
+		m_iData1 = pCityToFind->getX();
+		m_iData2 = pCityToFind->getY();
+
+		const char* strTargetNameKey = pCityToFind->getNameKey();
+
+		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_FIND_CITY");
+		strMessage << strTargetNameKey;
+		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_QUEST_FIND_CITY");
+		strSummary << strTargetNameKey;
 		break;
 	}
 	case MINOR_CIV_QUEST_FIND_NATURAL_WONDER:
@@ -3165,6 +3193,18 @@ bool CvMinorCivQuest::DoFinishQuest()
 		strMessage << strCivKey;
 		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_QUEST_COMPLETE_FIND_PLAYER");
 		strSummary << strCivKey;
+		break;
+	}
+	case MINOR_CIV_QUEST_FIND_CITY:
+	{
+		CvPlot* pPlot = GC.getMap().plot(m_iData1, m_iData2);
+		CvCity* pCityFound = pPlot->getPlotCity();
+		const char* strTargetNameKey = pCityFound->getNameKey();
+
+		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_COMPLETE_FIND_CITY");
+		strMessage << strTargetNameKey;
+		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_QUEST_COMPLETE_FIND_CITY");
+		strSummary << strTargetNameKey;
 		break;
 	}
 	case MINOR_CIV_QUEST_FIND_NATURAL_WONDER:
@@ -6385,6 +6425,8 @@ bool CvMinorCivAI::IsEnabledQuest(MinorCivQuestTypes eQuest)
 		return GD_INT_GET(QUEST_DISABLED_KILL_CITY_STATE) < 1;
 	case MINOR_CIV_QUEST_FIND_PLAYER:
 		return GD_INT_GET(QUEST_DISABLED_FIND_PLAYER) < 1;
+	case MINOR_CIV_QUEST_FIND_CITY:
+		return GD_INT_GET(QUEST_DISABLED_FIND_CITY) < 1;
 	case MINOR_CIV_QUEST_FIND_NATURAL_WONDER:
 		return GD_INT_GET(QUEST_DISABLED_NATURAL_WONDER) < 1;
 	case MINOR_CIV_QUEST_GIVE_GOLD:
@@ -6606,6 +6648,13 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 	case MINOR_CIV_QUEST_FIND_PLAYER:
 	{
 		if (GetBestPlayerToFind(ePlayer) == NO_PLAYER)
+			return false;
+
+		break;
+	}
+	case MINOR_CIV_QUEST_FIND_CITY:
+	{
+		if (GetBestCityToFind(ePlayer) == NULL)
 			return false;
 
 		break;
@@ -7180,6 +7229,20 @@ int CvMinorCivAI::GetPersonalityQuestBias(MinorCivQuestTypes eQuest) const
 		else if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
 		{
 			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_FIND_PLAYER);
+			iWeight /= 100;
+		}
+		break;
+	}
+	case MINOR_CIV_QUEST_FIND_CITY:
+	{
+		if (eTrait == MINOR_CIV_TRAIT_MARITIME)
+		{
+			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_FIND_CITY);
+			iWeight /= 100;
+		}
+		else if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
+		{
+			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_FIND_CITY);
 			iWeight /= 100;
 		}
 		break;
@@ -10128,6 +10191,67 @@ PlayerTypes CvMinorCivAI::GetBestPlayerToFind(PlayerTypes ePlayer)
 
 	int iRandIndex = GC.getGame().getSmallFakeRandNum(veValidTargets.size(), GET_PLAYER(ePlayer).getNumUnits() + GET_PLAYER(ePlayer).GetTreasury()->GetLifetimeGrossGold());
 	return veValidTargets[iRandIndex];
+}
+
+/// Any good cities to ask ePlayer to find?
+CvCity* CvMinorCivAI::GetBestCityToFind(PlayerTypes ePlayer)
+{
+	TeamTypes eTeam = GET_PLAYER(ePlayer).getTeam();
+	if (GET_TEAM(eTeam).isMapTrading())
+		return NULL;
+
+	bool bCanCrossOcean = GET_PLAYER(ePlayer).CanCrossOcean();
+	CvWeightedVector<CvCity*> CitiesSortedByDistance;
+
+	for (int iPlayerLoop = 0; iPlayerLoop < MAX_PLAYERS; iPlayerLoop++)
+	{
+		PlayerTypes eLoopPlayer = (PlayerTypes) iPlayerLoop;
+
+		if (!GET_PLAYER(eLoopPlayer).isAlive())
+			continue;
+
+		TeamTypes eLoopTeam = GET_PLAYER(eLoopPlayer).getTeam();
+		if (eLoopTeam == eTeam)
+			continue;
+
+		if (!GET_TEAM(eTeam).isHasMet(eLoopTeam))
+			continue;
+
+		int iCityLoop = 0;
+		for (CvCity* pLoopCity = GET_PLAYER(eLoopPlayer).firstCity(&iCityLoop); pLoopCity != NULL; pLoopCity = GET_PLAYER(eLoopPlayer).nextCity(&iCityLoop))
+		{
+			if (pLoopCity->IsRazing())
+				continue;
+
+			CvPlot* pPlot = pLoopCity->plot();
+			if (pPlot == NULL || pPlot->isRevealed(eTeam))
+				continue;
+
+			// We want an accessible city that's a decent distance away from this player's closest city
+			CvLandmass* pLandmass = GC.getMap().getLandmassById(pPlot->getLandmass());
+			if (bCanCrossOcean || pLandmass->getCitiesPerPlayer(ePlayer) > 0)
+			{
+				CvCity* pClosestCity = GET_PLAYER(ePlayer).GetClosestCityByPlots(pPlot);
+				if (!pClosestCity)
+					continue;
+
+				int iDistance = plotDistance(pClosestCity->getX(), pClosestCity->getY(), pPlot->getX(), pPlot->getY());
+				if (iDistance >= /*16*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_MIN_DISTANCE))
+				{
+					int iScore = 1000 - iDistance;
+					CitiesSortedByDistance.push_back(pLoopCity, iScore);
+				}
+			}
+		}
+	}
+
+	// Didn't find any possibilities
+	if (CitiesSortedByDistance.size() == 0)
+		return NULL;
+
+	// Select the closest city
+	CitiesSortedByDistance.StableSortItems();
+	return CitiesSortedByDistance.GetElement(0);
 }
 
 /// Natural Wonder available to find that's not TOO easy to find?

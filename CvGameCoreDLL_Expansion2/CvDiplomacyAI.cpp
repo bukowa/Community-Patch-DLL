@@ -16068,6 +16068,18 @@ void CvDiplomacyAI::SelectBestApproachTowardsMajorCiv(PlayerTypes ePlayer, bool 
 				{
 					iNumFriendlyQuests++;
 				}
+				if (pMinorCivAI->IsActiveQuestForPlayer(eMyPlayer, MINOR_CIV_QUEST_FIND_CITY))
+				{
+					// Minor cheating: Allow the AI to know who owns the city
+					// Humans can do the same in many cases by memorizing the city names
+					int iX = pMinorCivAI->GetQuestData1(eMyPlayer, MINOR_CIV_QUEST_FIND_CITY);
+					int iY = pMinorCivAI->GetQuestData2(eMyPlayer, MINOR_CIV_QUEST_FIND_CITY);
+					CvPlot* pPlot = GC.getMap().plot(iX, iY);
+					if (pPlot->isCity() && pPlot->getOwner() == ePlayer)
+					{
+						iNumFriendlyQuests++;
+					}
+				}
 				if (pMinorCivAI->IsActiveQuestForPlayer(eMyPlayer, MINOR_CIV_QUEST_CONNECT_RESOURCE))
 				{
 					ResourceTypes eResource = (ResourceTypes) pMinorCivAI->GetQuestData1(eMyPlayer, MINOR_CIV_QUEST_CONNECT_RESOURCE);
@@ -52699,6 +52711,9 @@ void CvDiplomacyAI::LogMinorCivQuestType(CvString& strString, MinorCivQuestTypes
 		break;
 	case MINOR_CIV_QUEST_FIND_PLAYER:
 		strTemp.Format("Find Player");
+		break;
+	case MINOR_CIV_QUEST_FIND_CITY:
+		strTemp.Format("Find City");
 		break;
 	case MINOR_CIV_QUEST_FIND_NATURAL_WONDER:
 		strTemp.Format("Find Natural Wonder");

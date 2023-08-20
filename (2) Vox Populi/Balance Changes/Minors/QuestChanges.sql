@@ -22,6 +22,8 @@ UPDATE Defines SET Value = '200' WHERE Name = 'MINOR_CIV_PERSONAL_QUEST_RAND_TUR
 
 -- Enabled Quests
 UPDATE Defines SET Value = '0' WHERE Name = 'QUEST_DISABLED_KILL_CITY_STATE';
+UPDATE Defines SET Value = '1' WHERE Name = 'QUEST_DISABLED_FIND_PLAYER';
+UPDATE Defines SET Value = '0' WHERE Name = 'QUEST_DISABLED_FIND_CITY';
 UPDATE Defines SET Value = '0' WHERE Name = 'QUEST_DISABLED_WAR';
 UPDATE Defines SET Value = '0' WHERE Name = 'QUEST_DISABLED_CONSTRUCT_NATIONAL_WONDER';
 UPDATE Defines SET Value = '0' WHERE Name = 'QUEST_DISABLED_GIFT_SPECIFIC_UNIT';
@@ -59,6 +61,9 @@ UPDATE SmallAwards SET Influence = '50', Gold = '200', GoldenAgePoints = '200', 
 
 -- Find Player
 UPDATE SmallAwards SET Influence = '30', Science = '50', RandomMod = '10', QuestDuration = '50' WHERE Type = 'MINOR_CIV_QUEST_FIND_PLAYER';
+
+-- Find City
+UPDATE SmallAwards SET Influence = '20', Science = '30', RandomMod = '5', QuestDuration = '50' WHERE Type = 'MINOR_CIV_QUEST_FIND_CITY';
 
 -- Find NW
 UPDATE SmallAwards SET Influence = '30', GoldenAgePoints = '150', RandomMod = '10' WHERE Type = 'MINOR_CIV_QUEST_FIND_NATURAL_WONDER';

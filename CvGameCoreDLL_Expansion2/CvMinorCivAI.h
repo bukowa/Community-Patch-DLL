@@ -54,6 +54,7 @@ enum CLOSED_ENUM MinorCivQuestTypes
     MINOR_CIV_QUEST_GREAT_PERSON,
     MINOR_CIV_QUEST_KILL_CITY_STATE,
     MINOR_CIV_QUEST_FIND_PLAYER,
+	MINOR_CIV_QUEST_FIND_CITY,
     MINOR_CIV_QUEST_FIND_NATURAL_WONDER,
     MINOR_CIV_QUEST_GIVE_GOLD,
     MINOR_CIV_QUEST_PLEDGE_TO_PROTECT,
@@ -558,6 +559,7 @@ public:
 	PlayerTypes GetMostRecentBullyForQuest() const;
 	bool IsWantsMinorDead(PlayerTypes eMinor);
 	PlayerTypes GetBestPlayerToFind(PlayerTypes ePlayer);
+	CvCity* GetBestCityToFind(PlayerTypes ePlayer);
 	bool IsGoodTimeForNaturalWonderQuest(PlayerTypes ePlayer);
 
 	// ******************************
