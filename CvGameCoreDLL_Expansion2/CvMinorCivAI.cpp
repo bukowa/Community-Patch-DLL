@@ -1729,7 +1729,6 @@ bool CvMinorCivQuest::IsExpired()
 		break;
 	}
 	case MINOR_CIV_QUEST_FIND_PLAYER:
-	case MINOR_CIV_QUEST_BULLY_CITY_STATE:
 	{
 		// Someone killed the player
 		PlayerTypes eTargetPlayer = (PlayerTypes) GetPrimaryData();
@@ -1770,6 +1769,21 @@ bool CvMinorCivQuest::IsExpired()
 
 		// Contest completed, and not the winner
 		if (GC.getGame().getGameTurn() == GetEndTurn() && !IsComplete())
+			return true;
+
+		break;
+	}
+	case MINOR_CIV_QUEST_BULLY_CITY_STATE:
+	{
+		// Someone killed the player
+		PlayerTypes eTargetPlayer = (PlayerTypes) GetPrimaryData();
+		if (!GET_PLAYER(eTargetPlayer).isAlive())
+			return true;
+
+		if (GET_PLAYER(eTargetPlayer).GetMinorCivAI()->GetAlly() == m_eAssignedPlayer)
+			return true;
+
+		if (GET_PLAYER(eTargetPlayer).GetMinorCivAI()->IsProtectedByMajor(m_eAssignedPlayer))
 			return true;
 
 		break;
@@ -9042,6 +9056,7 @@ PlayerTypes CvMinorCivAI::GetBestCityStateTarget(PlayerTypes ePlayer, bool bKill
 {
 	CvWeightedVector<PlayerTypes> veValidTargets;
 	vector<PlayerTypes> veTargetChoices;
+	vector<PlayerTypes> vPlayerTeam = GET_TEAM(GET_PLAYER(ePlayer).getTeam()).getPlayers();
 
 	for (int iTargetLoop = MAX_MAJOR_CIVS; iTargetLoop < MAX_CIV_PLAYERS; iTargetLoop++)
 	{
@@ -9079,11 +9094,28 @@ PlayerTypes CvMinorCivAI::GetBestCityStateTarget(PlayerTypes ePlayer, bool bKill
 			if (!GET_TEAM(GET_PLAYER(ePlayer).getTeam()).isHasMet(GET_PLAYER(eTarget).getTeam()))
 				continue;
 
-			// Don't give a quest to attack a player's own ally
+			// Don't give a quest to attack a player's own ally / PTP
+			PlayerTypes eTargetAlly = GET_PLAYER(eTarget).GetMinorCivAI()->GetAlly();
 			if (bKillQuest)
 			{
-				PlayerTypes eTargetAlly = GET_PLAYER(eTarget).GetMinorCivAI()->GetAlly();
 				if (eTargetAlly != NO_PLAYER && GET_PLAYER(eTargetAlly).getTeam() == GET_PLAYER(ePlayer).getTeam())
+					continue;
+
+				for (size_t i=0; i<vPlayerTeam.size(); i++)
+				{
+					if (!GET_PLAYER(vPlayerTeam[i]).isAlive() || !GET_PLAYER(vPlayerTeam[i]).isMajorCiv())
+						continue;
+
+					if (GET_PLAYER(eTarget).GetMinorCivAI()->IsProtectedByMajor(vPlayerTeam[i]))
+						continue;
+				}
+			}
+			else
+			{
+				if (eTargetAlly == ePlayer)
+					continue;
+
+				if (GET_PLAYER(eTarget).GetMinorCivAI()->IsProtectedByMajor(ePlayer))
 					continue;
 			}
 		}
