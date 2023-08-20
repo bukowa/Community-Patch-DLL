@@ -124,7 +124,7 @@ UPDATE SmallAwards SET Influence = '40', Production = '75', RandomMod = '10', Qu
 UPDATE SmallAwards SET Influence = '60', Science = '150', RandomMod = '10' WHERE Type = 'MINOR_CIV_QUEST_UNIT_STEAL_FROM';
 
 -- Coup
-UPDATE SmallAwards SET Influence = '40', CapitalGPPoints = '150', RandomMod = '10', QuestDuration = '50' WHERE Type = 'MINOR_CIV_QUEST_UNIT_COUP_CITY';
+UPDATE SmallAwards SET Influence = '40', CapitalGPPoints = '150', RandomMod = '10' WHERE Type = 'MINOR_CIV_QUEST_UNIT_COUP_CITY';
 
 -- Conquest
 UPDATE SmallAwards SET Influence = '80', GlobalExperience = '15', RandomMod = '5', QuestDuration = '50' WHERE Type = 'MINOR_CIV_QUEST_UNIT_GET_CITY';
