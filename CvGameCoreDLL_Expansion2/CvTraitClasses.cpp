@@ -6797,12 +6797,15 @@ int CvPlayerTraits::GetCapitalBuildingDiscount(BuildingTypes eBuilding)
 int CvPlayerTraits::GetWonderProductionToBuildingDiscount(BuildingTypes eBuilding)
 {
 	CvBuildingEntry* thisBuildingEntry = GC.getBuildingInfo(eBuilding);
-	const CvBuildingClassInfo& kBuildingClassInfo = thisBuildingEntry->GetBuildingClassInfo();
-	if(GetWonderProductionModifierToBuilding() > 0)
+	if (thisBuildingEntry)
 	{
-		if(!(::isWorldWonderClass(kBuildingClassInfo) || ::isTeamWonderClass(kBuildingClassInfo) || ::isNationalWonderClass(kBuildingClassInfo)))
+		const CvBuildingClassInfo& kBuildingClassInfo = thisBuildingEntry->GetBuildingClassInfo();
+		if (GetWonderProductionModifierToBuilding() > 0)
 		{
-			return (GetWonderProductionModifierToBuilding());
+			if (!(::isWorldWonderClass(kBuildingClassInfo) || ::isTeamWonderClass(kBuildingClassInfo) || ::isNationalWonderClass(kBuildingClassInfo)))
+			{
+				return (GetWonderProductionModifierToBuilding());
+			}
 		}
 	}
 	return 0;
