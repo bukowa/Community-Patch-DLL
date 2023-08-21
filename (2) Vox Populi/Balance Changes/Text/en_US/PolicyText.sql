@@ -360,7 +360,7 @@ WHERE Tag = 'TXT_KEY_AESTHETICS_TITLE';
 
 -- Opener/Finisher
 UPDATE Language_en_US
-SET Text = '[COLOR_POSITIVE_TEXT]Artistry[ENDCOLOR] allows you to maximize the potential of [ICON_GREAT_WORK] Great Works and [ICON_GOLDEN_AGE] Golden Ages.[NEWLINE][NEWLINE][COLOR_POSITIVE_TEXT]Adopting Artistry grants:[ENDCOLOR][NEWLINE][ICON_BULLET]Earn Great [ICON_GREAT_WRITER] Writers, [ICON_GREAT_ARTIST] Artists, and [ICON_GREAT_MUSICIAN] Musician 25% faster.[NEWLINE][ICON_BULLET]+10% [ICON_CULTURE] Culture during [ICON_GOLDEN_AGE] Golden Ages.[NEWLINE][ICON_BULLET]+100% [ICON_PRODUCTION] Production toward all Guilds.[NEWLINE][NEWLINE][COLOR_POSITIVE_TEXT]Each Artistry policy unlocked grants:[ENDCOLOR][NEWLINE][ICON_BULLET]+2 [ICON_GOLDEN_AGE] Golden Age Points and +1 [ICON_RESEARCH] Science in every City.[NEWLINE][NEWLINE][COLOR_POSITIVE_TEXT]Adopting all policies in Artistry grants:[ENDCOLOR][NEWLINE][ICON_BULLET]Unlocks building the [COLOR_POSITIVE_TEXT]Louvre[ENDCOLOR]. [NEWLINE][ICON_BULLET]Completing an [ICON_RES_ARTIFACTS] Archaeological Dig or starting a [ICON_GOLDEN_AGE] Golden Age triggers (or strengthens an existing) [COLOR_POSITIVE_TEXT]Historic Event[ENDCOLOR] with all known Civilizations.[NEWLINE][ICON_BULLET]Allows you to see [ICON_RES_HIDDEN_ARTIFACTS] Hidden Antiquity Sites.[NEWLINE][ICON_BULLET]+3 [ICON_RESEARCH] Science and [ICON_GOLDEN_AGE] Golden Age Points from [ICON_RES_ARTIFACTS] Landmarks.[NEWLINE][ICON_BULLET]Allows for the purchase of [ICON_GREAT_MUSICIAN] Great Musicians with [ICON_PEACE] Faith starting in the Industrial Era.'
+SET Text = '[COLOR_POSITIVE_TEXT]Artistry[ENDCOLOR] allows you to maximize the potential of [ICON_GREAT_WORK] Great Works and [ICON_GOLDEN_AGE] Golden Ages.[NEWLINE][NEWLINE][COLOR_POSITIVE_TEXT]Adopting Artistry grants:[ENDCOLOR][NEWLINE][ICON_BULLET]Earn Great [ICON_GREAT_WRITER] Writers, [ICON_GREAT_ARTIST] Artists, and [ICON_GREAT_MUSICIAN] Musicians 25% faster.[NEWLINE][ICON_BULLET]+10% [ICON_CULTURE] Culture during [ICON_GOLDEN_AGE] Golden Ages.[NEWLINE][ICON_BULLET]+100% [ICON_PRODUCTION] Production toward all Guilds.[NEWLINE][NEWLINE][COLOR_POSITIVE_TEXT]Each Artistry policy unlocked grants:[ENDCOLOR][NEWLINE][ICON_BULLET]+1 [ICON_RESEARCH] Science in every City and +20% progress towards [ICON_GOLDEN_AGE] Golden Ages from Excess [ICON_HAPPINESS_1] Happiness in Empire.[NEWLINE][NEWLINE][COLOR_POSITIVE_TEXT]Adopting all policies in Artistry grants:[ENDCOLOR][NEWLINE][ICON_BULLET]Unlocks building the [COLOR_POSITIVE_TEXT]Louvre[ENDCOLOR]. [NEWLINE][ICON_BULLET]Completing an [ICON_RES_ARTIFACTS] Archaeological Dig or starting a [ICON_GOLDEN_AGE] Golden Age triggers (or strengthens an existing) [COLOR_POSITIVE_TEXT]Historic Event[ENDCOLOR] with all known Civilizations.[NEWLINE][ICON_BULLET]Allows you to see [ICON_RES_HIDDEN_ARTIFACTS] Hidden Antiquity Sites.[NEWLINE][ICON_BULLET]+3 [ICON_RESEARCH] Science from [ICON_RES_ARTIFACTS] Landmarks.[NEWLINE][ICON_BULLET]Allows for the purchase of [ICON_GREAT_MUSICIAN] Great Musicians with [ICON_PEACE] Faith starting in the Industrial Era.'
 WHERE Tag = 'TXT_KEY_POLICY_BRANCH_AESTHETICS_HELP';
 
 UPDATE Language_en_US
@@ -373,7 +373,7 @@ SET Text = 'Humanism'
 WHERE Tag = 'TXT_KEY_POLICY_CULTURAL_CENTERS';
 
 UPDATE Language_en_US
-SET Text = '[COLOR_POSITIVE_TEXT]Humanism[ENDCOLOR][NEWLINE][ICON_BULLET]+3 [ICON_GOLDEN_AGE] Golden Age Points from [ICON_VP_GREATWRITING] Great Works of Writing.[NEWLINE][ICON_BULLET]-25% [ICON_GOLDEN_AGE] Golden Age Points needed to trigger a [ICON_GOLDEN_AGE] Golden Age.[NEWLINE][ICON_BULLET]+1 [ICON_HAPPINESS_1] Happiness from all Guilds.'
+SET Text = '[COLOR_POSITIVE_TEXT]Humanism[ENDCOLOR][NEWLINE][ICON_BULLET]+3 [ICON_PEACE] Faith from [ICON_VP_GREATWRITING] Great Works of Writing.[NEWLINE][ICON_BULLET]-25% [ICON_GOLDEN_AGE] Golden Age Points needed to trigger a [ICON_GOLDEN_AGE] Golden Age.[NEWLINE][ICON_BULLET]+1 [ICON_HAPPINESS_1] Happiness from all Guilds.'
 WHERE Tag = 'TXT_KEY_POLICY_CULTURAL_CENTERS_HELP';
 
 UPDATE Language_en_US
@@ -399,7 +399,7 @@ SET Text = 'Heritage'
 WHERE Tag = 'TXT_KEY_POLICY_FLOURISHING_OF_ARTS';
 
 UPDATE Language_en_US
-SET Text = '[COLOR_POSITIVE_TEXT]Heritage[ENDCOLOR][NEWLINE][ICON_BULLET]+4 [ICON_GOLD] Gold from [ICON_VP_GREATMUSIC] Great Works of Music.[NEWLINE][ICON_BULLET]+4 [ICON_TOURISM] Tourism and [ICON_GOLDEN_AGE] Golden Age Points from Universities.[NEWLINE][ICON_BULLET]25% of the [ICON_CULTURE] Culture from [ICON_WONDER] World Wonders and Tiles is added to the [ICON_TOURISM] Tourism output of the city.'
+SET Text = '[COLOR_POSITIVE_TEXT]Heritage[ENDCOLOR][NEWLINE][ICON_BULLET]+4 [ICON_GOLD] Gold from [ICON_VP_GREATMUSIC] Great Works of Music.[NEWLINE][ICON_BULLET]+50% to all [ICON_TOURISM]/[ICON_CULTURE] Theming Bonuses on Empire[NEWLINE][ICON_BULLET]25% of the [ICON_CULTURE] Culture from [ICON_WONDER] World Wonders and Tiles is added to the [ICON_TOURISM] Tourism output of the city.'
 WHERE Tag = 'TXT_KEY_POLICY_FLOURISHING_OF_ARTS_HELP';
 
 UPDATE Language_en_US
