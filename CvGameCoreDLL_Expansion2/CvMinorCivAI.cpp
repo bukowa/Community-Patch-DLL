@@ -1516,10 +1516,10 @@ bool CvMinorCivQuest::IsComplete()
 
 		return false;
 	}
-	case MINOR_CIV_QUEST_DISCOVER_PLOT:
+	case MINOR_CIV_QUEST_DISCOVER_AREA:
 	{
 		// Explored the area?
-		return pMinor->GetMinorCivAI()->GetExplorePercent(m_eAssignedPlayer, MINOR_CIV_QUEST_DISCOVER_PLOT) >= 100;
+		return pMinor->GetMinorCivAI()->GetExplorePercent(m_eAssignedPlayer, MINOR_CIV_QUEST_DISCOVER_AREA) >= 100;
 	}
 	case MINOR_CIV_QUEST_BUILD_X_BUILDINGS:
 	{
@@ -1529,7 +1529,7 @@ bool CvMinorCivQuest::IsComplete()
 		// Built X of this building?
 		return eBuilding != NO_BUILDING && pAssignedPlayer->getNumBuildings(eBuilding) >= iNumToConstruct;
 	}
-	case MINOR_CIV_QUEST_UNIT_STEAL_FROM:
+	case MINOR_CIV_QUEST_SPY_ON_MAJOR:
 	{
 		PlayerTypes eTargetMajor = (PlayerTypes)m_iData1;
 		int iNumThefts = m_iData2;
@@ -1537,14 +1537,14 @@ bool CvMinorCivQuest::IsComplete()
 		// Stole from the target X times?
 		return pAssignedPlayer->GetEspionage()->GetNumSpyActionsDone(eTargetMajor) >= iNumThefts;
 	}
-	case MINOR_CIV_QUEST_UNIT_COUP_CITY:
+	case MINOR_CIV_QUEST_COUP:
 	{
 		PlayerTypes eTargetMinor = (PlayerTypes)m_iData1;
 
 		// Successful coup against the target City-State?
 		return GET_PLAYER(eTargetMinor).GetMinorCivAI()->IsCoupAttempted(m_eAssignedPlayer) && GET_PLAYER(eTargetMinor).GetMinorCivAI()->GetAlly() == m_eAssignedPlayer;
 	}
-	case MINOR_CIV_QUEST_UNIT_GET_CITY:
+	case MINOR_CIV_QUEST_ACQUIRE_CITY:
 	{
 		int iX = m_iData1, iY = m_iData2;
 		CvPlot* pPlot = GC.getMap().plot(iX, iY);
@@ -1718,8 +1718,11 @@ bool CvMinorCivQuest::IsExpired()
 		if (MOD_BALANCE_VP)
 		{
 			// Someone else allied to both? We lose!
-			if (pTargetCityState->GetMinorCivAI()->GetAlly() != NO_PLAYER && pTargetCityState->GetMinorCivAI()->GetAlly() == GET_PLAYER(m_eMinor).GetMinorCivAI()->GetAlly())
+			if (pTargetCityState->GetMinorCivAI()->GetAlly() != NO_PLAYER && pTargetCityState->GetMinorCivAI()->GetAlly() != m_eAssignedPlayer &&
+				pTargetCityState->GetMinorCivAI()->GetAlly() == GET_PLAYER(m_eMinor).GetMinorCivAI()->GetAlly())
+			{
 				return true;
+			}
 
 			if (pTargetCityState->isAlive() && GC.getGame().getGameTurn() >= GetEndTurn() && !IsComplete())
 			{
@@ -1819,6 +1822,10 @@ bool CvMinorCivQuest::IsExpired()
 
 		// Is this now a bad target (backstabbing)?
 		if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_DENOUNCE_MAJOR, m_eAssignedPlayer, eTargetPlayer))
+			return true;
+
+		// Cannot denounce due to game options
+		if (GC.getGame().isOption(GAMEOPTION_NO_CHANGING_WAR_PEACE) && GET_PLAYER(m_eAssignedPlayer).IsAtWarWith(eTargetPlayer))
 			return true;
 
 		break;
@@ -2084,7 +2091,7 @@ bool CvMinorCivQuest::IsExpired()
 
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_STEAL_FROM:
+	case MINOR_CIV_QUEST_SPY_ON_MAJOR:
 	{
 		// Someone killed the player
 		PlayerTypes eTargetPlayer = (PlayerTypes) GetPrimaryData();
@@ -2092,12 +2099,12 @@ bool CvMinorCivQuest::IsExpired()
 			return true;
 
 		// Player is now a bad target?
-		if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_UNIT_STEAL_FROM, m_eAssignedPlayer, eTargetPlayer))
+		if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_SPY_ON_MAJOR, m_eAssignedPlayer, eTargetPlayer))
 			return true;
 
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_COUP_CITY:
+	case MINOR_CIV_QUEST_COUP:
 	{
 		PlayerTypes eTargetMinor = (PlayerTypes)m_iData1;
 		CvPlayer* pTargetMinor = &GET_PLAYER(eTargetMinor);
@@ -2122,12 +2129,12 @@ bool CvMinorCivQuest::IsExpired()
 		}
 
 		// Ally is now a bad target?
-		if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_UNIT_COUP_CITY, m_eAssignedPlayer, pTargetMinor->GetMinorCivAI()->GetAlly()))
+		if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_COUP, m_eAssignedPlayer, pTargetMinor->GetMinorCivAI()->GetAlly()))
 			return true;
 
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_GET_CITY:
+	case MINOR_CIV_QUEST_ACQUIRE_CITY:
 	{
 		CvPlot* pPlot = GC.getMap().plot(m_iData1, m_iData2);
 		PlayerTypes eCityOwner = pPlot->getOwner();
@@ -2155,7 +2162,7 @@ bool CvMinorCivQuest::IsExpired()
 			// Is the city owner now an unacceptable target (backstabbing)?
 			if (GET_PLAYER(eCityOwner).isMajorCiv())
 			{
-				if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_UNIT_GET_CITY, m_eAssignedPlayer, eCityOwner))
+				if (!pMinor->GetMinorCivAI()->IsAcceptableQuestEnemy(MINOR_CIV_QUEST_ACQUIRE_CITY, m_eAssignedPlayer, eCityOwner))
 					return true;
 			}
 			else if (GET_PLAYER(eCityOwner).isMinorCiv())
@@ -2788,7 +2795,7 @@ void CvMinorCivQuest::DoStartQuest(int iStartTurn, PlayerTypes pCallingPlayer)
 		}
 		break;
 	}
-	case MINOR_CIV_QUEST_DISCOVER_PLOT:
+	case MINOR_CIV_QUEST_DISCOVER_AREA:
 	{
 		CvPlot* pPlot = pMinor->GetMinorCivAI()->GetTargetPlot(m_eAssignedPlayer);
 		m_iData1 = pPlot->getX();
@@ -2799,8 +2806,8 @@ void CvMinorCivQuest::DoStartQuest(int iStartTurn, PlayerTypes pCallingPlayer)
 
 		pPlot->setRevealed(pAssignedPlayer->getTeam(), true);
 
-		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_DISCOVERY_PLOT");
-		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_DISCOVERY_PLOT");
+		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_DISCOVER_AREA");
+		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_DISCOVER_AREA");
 
 		iNotificationX = pPlot->getX();
 		iNotificationY = pPlot->getY();
@@ -2834,13 +2841,13 @@ void CvMinorCivQuest::DoStartQuest(int iStartTurn, PlayerTypes pCallingPlayer)
 
 		const char* strBuildingName = GC.getBuildingInfo(eBuilding)->GetDescriptionKey();
 
-		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_CONSTRUCT_X_BUILDING");
+		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_BUILD_X_BUILDINGS");
 		strMessage << strBuildingName;
 		strMessage << iActionAmount;
-		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_QUEST_CONSTRUCT_X_BUILDING");
+		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_QUEST_BUILD_X_BUILDINGS");
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_STEAL_FROM:
+	case MINOR_CIV_QUEST_SPY_ON_MAJOR:
 	{
 		CvCity* pCity = pMinor->GetMinorCivAI()->GetBestSpyTarget(m_eAssignedPlayer, false);
 		int iActionAmount = GC.getGame().getSmallFakeRandNum(3, *pCity->plot());
@@ -2852,13 +2859,13 @@ void CvMinorCivQuest::DoStartQuest(int iStartTurn, PlayerTypes pCallingPlayer)
 
 		const char* strTargetNameKey = GET_PLAYER(pCity->getOwner()).getNameKey();
 
-		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_STEAL_FROM");
+		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_SPY_ON_MAJOR");
 		strMessage << strTargetNameKey;
 		strMessage << (m_iData2 - pAssignedPlayer->GetEspionage()->GetNumSpyActionsDone(pCity->getOwner()));
-		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_QUEST_STEAL_FROM");
+		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_QUEST_SPY_ON_MAJOR");
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_COUP_CITY:
+	case MINOR_CIV_QUEST_COUP:
 	{
 		CvCity* pCity = pMinor->GetMinorCivAI()->GetBestSpyTarget(m_eAssignedPlayer, true);
 		m_iData1 = pCity->getOwner();
@@ -2873,7 +2880,7 @@ void CvMinorCivQuest::DoStartQuest(int iStartTurn, PlayerTypes pCallingPlayer)
 		iNotificationY = pCity->getY();
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_GET_CITY:
+	case MINOR_CIV_QUEST_ACQUIRE_CITY:
 	{
 		CvCity* pCity = pMinor->GetMinorCivAI()->GetBestCityForQuest(m_eAssignedPlayer);
 		m_iData1 = pCity->plot()->getX();
@@ -2887,16 +2894,16 @@ void CvMinorCivQuest::DoStartQuest(int iStartTurn, PlayerTypes pCallingPlayer)
 
 		if (pAssignedPlayer->isHuman() && GC.getGame().isOption(GAMEOPTION_ONE_CITY_CHALLENGE))
 		{
-			strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_UNIT_GET_CITY_OCC");
+			strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_ACQUIRE_CITY_OCC");
 			strMessage << strTargetNameKey;
-			strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_UNIT_GET_CITY_OCC");
+			strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_ACQUIRE_CITY_OCC");
 			strSummary << strTargetNameKey;
 		}
 		else
 		{
-			strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_CAPTURE_CITY");
+			strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_ACQUIRE_CITY");
 			strMessage << strTargetNameKey;
-			strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_CAPTURE_CITY");
+			strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_ACQUIRE_CITY");
 			strSummary << strTargetNameKey;
 		}
 
@@ -3413,52 +3420,52 @@ bool CvMinorCivQuest::DoFinishQuest()
 		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_QUEST_COMPLETE_REBELLION");
 		break;
 	}
-	case MINOR_CIV_QUEST_DISCOVER_PLOT:
+	case MINOR_CIV_QUEST_DISCOVER_AREA:
 	{
 		pMinor->GetMinorCivAI()->SetTargetedAreaID(m_eAssignedPlayer, -1);
 
-		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_DISCOVERY_PLOT_COMPLETE");
-		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_DISCOVERY_PLOT_COMPLETE");
+		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_DISCOVER_AREA_COMPLETE");
+		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_DISCOVER_AREA_COMPLETE");
 		break;
 	}
 	case MINOR_CIV_QUEST_BUILD_X_BUILDINGS:
 	{
-		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_BUILD_X_COMPLETE");
-		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_BUILD_X_COMPLETE");
+		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_BUILD_X_BUILDINGS_COMPLETE");
+		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_BUILD_X_BUILDINGS_COMPLETE");
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_STEAL_FROM:
+	case MINOR_CIV_QUEST_SPY_ON_MAJOR:
 	{
 		PlayerTypes eTargetMajor = (PlayerTypes)GetPrimaryData();
 		const char* strTargetNameKey = GET_PLAYER(eTargetMajor).getNameKey();
-		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_STEAL_FROM_COMPLETE");
+		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_SPY_ON_MAJOR_COMPLETE");
 		strMessage << strTargetNameKey;
-		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_STEAL_FROM_COMPLETE");
+		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_SPY_ON_MAJOR_COMPLETE");
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_COUP_CITY:
+	case MINOR_CIV_QUEST_COUP:
 	{
 		PlayerTypes eTargetCityState = (PlayerTypes)GetPrimaryData();
 		const char* strTargetNameKey = GET_PLAYER(eTargetCityState).getNameKey();
 
 		pMinor->GetMinorCivAI()->SetCoupAttempted(m_eAssignedPlayer, false);
 
-		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_COUP_CITY_COMPLETE");
+		strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_COUP_COMPLETE");
 		strMessage << strTargetNameKey;
-		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_COUP_CITY_COMPLETE");
+		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_COUP_COMPLETE");
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_GET_CITY:
+	case MINOR_CIV_QUEST_ACQUIRE_CITY:
 	{
 		if (GET_PLAYER(m_eAssignedPlayer).isHuman() && GC.getGame().isOption(GAMEOPTION_ONE_CITY_CHALLENGE))
 		{
-			strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_GET_CITY_OCC_COMPLETE");
-			strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_GET_CITY_OCC_COMPLETE");
+			strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_ACQUIRE_CITY_OCC_COMPLETE");
+			strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_ACQUIRE_CITY_OCC_COMPLETE");
 		}
 		else
 		{
-			strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_GET_CITY_COMPLETE");
-			strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_GET_CITY_COMPLETE");
+			strMessage = Localization::Lookup("TXT_KEY_NOTIFICATION_QUEST_ACQUIRE_CITY_COMPLETE");
+			strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_SUMMARY_ACQUIRE_CITY_COMPLETE");
 		}
 		break;
 	}
@@ -3697,7 +3704,7 @@ bool CvMinorCivQuest::DoCancelQuest()
 		}
 		break;
 	}
-	case MINOR_CIV_QUEST_DISCOVER_PLOT:
+	case MINOR_CIV_QUEST_DISCOVER_AREA:
 	{
 		pMinor->GetMinorCivAI()->SetTargetedAreaID(m_eAssignedPlayer, -1);
 
@@ -3705,7 +3712,7 @@ bool CvMinorCivQuest::DoCancelQuest()
 		strSummary = Localization::Lookup("TXT_KEY_NOTIFICATION_PLOT_DISCOVERY_FAILED_S");
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_COUP_CITY:
+	case MINOR_CIV_QUEST_COUP:
 	{
 		pMinor->GetMinorCivAI()->SetCoupAttempted(m_eAssignedPlayer, false);
 
@@ -6023,7 +6030,7 @@ void CvMinorCivAI::DoTestStartGlobalQuest()
 				continue;
 
 			// What is the bias for this minor favoring this particular quest? Queue up multiple copies (default is 10)
-			int iCount = GetPersonalityQuestBias(eQuest);
+			int iCount = GetNumQuestCopies(eQuest);
 			for (int iCountLoop = 0; iCountLoop < iCount; iCountLoop++)
 			{
 				veValidQuests.push_back(eQuest);
@@ -6087,7 +6094,7 @@ void CvMinorCivAI::DoTestStartPersonalQuest(PlayerTypes ePlayer)
 		if (IsPersonalQuest(eQuest) && IsValidQuestForPlayer(ePlayer, eQuest) && (!MOD_BALANCE_VP || IsUniqueQuestForPlayer(ePlayer,eQuest)))
 		{
 			// What is the bias for this player wanting this particular quest? Queue up multiple copies (default is 10)
-			int iCount = GetPersonalityQuestBias(eQuest);
+			int iCount = GetNumQuestCopies(eQuest);
 
 			for (int iCountLoop = 0; iCountLoop < iCount; iCountLoop++)
 			{
@@ -6379,8 +6386,8 @@ bool CvMinorCivAI::IsTargetQuest(MinorCivQuestTypes eQuest)
 	case MINOR_CIV_QUEST_BULLY_CITY_STATE:
 	case MINOR_CIV_QUEST_ARCHAEOLOGY:
 	case MINOR_CIV_QUEST_LIBERATION:
-	case MINOR_CIV_QUEST_DISCOVER_PLOT:
-	case MINOR_CIV_QUEST_UNIT_GET_CITY:
+	case MINOR_CIV_QUEST_DISCOVER_AREA:
+	case MINOR_CIV_QUEST_ACQUIRE_CITY:
 		return true;
 	default:
 		return false;
@@ -6422,7 +6429,7 @@ bool CvMinorCivAI::IsEnabledQuest(MinorCivQuestTypes eQuest)
 	case MINOR_CIV_QUEST_GREAT_PERSON:
 		return GD_INT_GET(QUEST_DISABLED_GREAT_PERSON) < 1;
 	case MINOR_CIV_QUEST_KILL_CITY_STATE:
-		return GD_INT_GET(QUEST_DISABLED_KILL_CITY_STATE) < 1;
+		return !GC.getGame().isOption(GAMEOPTION_ALWAYS_PEACE) && (!MOD_BALANCE_VP || !GC.getGame().isOption(GAMEOPTION_NO_CHANGING_WAR_PEACE)) && GD_INT_GET(QUEST_DISABLED_KILL_CITY_STATE) < 1;
 	case MINOR_CIV_QUEST_FIND_PLAYER:
 		return GD_INT_GET(QUEST_DISABLED_FIND_PLAYER) < 1;
 	case MINOR_CIV_QUEST_FIND_CITY:
@@ -6450,7 +6457,7 @@ bool CvMinorCivAI::IsEnabledQuest(MinorCivQuestTypes eQuest)
 	case MINOR_CIV_QUEST_TRADE_ROUTE:
 		return GD_INT_GET(QUEST_DISABLED_TRADE_ROUTE) < 1;
 	case MINOR_CIV_QUEST_WAR:
-		return GD_INT_GET(QUEST_DISABLED_WAR) < 1;
+		return !GC.getGame().isOption(GAMEOPTION_NO_CHANGING_WAR_PEACE) && !GC.getGame().isOption(GAMEOPTION_ALWAYS_PEACE) && GD_INT_GET(QUEST_DISABLED_WAR) < 1;
 	case MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER:
 		return GD_INT_GET(QUEST_DISABLED_CONSTRUCT_NATIONAL_WONDER) < 1;
 	case MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT:
@@ -6468,19 +6475,19 @@ bool CvMinorCivAI::IsEnabledQuest(MinorCivQuestTypes eQuest)
 	case MINOR_CIV_QUEST_LIBERATION:
 		return GD_INT_GET(QUEST_DISABLED_LIBERATION) < 1;
 	case MINOR_CIV_QUEST_HORDE:
-		return GD_INT_GET(QUEST_DISABLED_HORDE) < 1;
+		return !GC.getGame().isOption(GAMEOPTION_NO_BARBARIANS) && GD_INT_GET(QUEST_DISABLED_HORDE) < 1;
 	case MINOR_CIV_QUEST_REBELLION:
-		return GD_INT_GET(QUEST_DISABLED_REBELLION) < 1;
-	case MINOR_CIV_QUEST_DISCOVER_PLOT:
-		return GD_INT_GET(QUEST_DISABLED_DISCOVER_PLOT) < 1;
+		return !GC.getGame().isOption(GAMEOPTION_NO_BARBARIANS) && GD_INT_GET(QUEST_DISABLED_REBELLION) < 1;
+	case MINOR_CIV_QUEST_DISCOVER_AREA:
+		return GD_INT_GET(QUEST_DISABLED_DISCOVER_AREA) < 1;
 	case MINOR_CIV_QUEST_BUILD_X_BUILDINGS:
 		return GD_INT_GET(QUEST_DISABLED_BUILD_X_BUILDINGS) < 1;
-	case MINOR_CIV_QUEST_UNIT_STEAL_FROM:
-		return GD_INT_GET(QUEST_DISABLED_UNIT_STEAL_FROM) < 1;
-	case MINOR_CIV_QUEST_UNIT_COUP_CITY:
-		return GD_INT_GET(QUEST_DISABLED_UNIT_COUP_CITY) < 1;
-	case MINOR_CIV_QUEST_UNIT_GET_CITY:
-		return GD_INT_GET(QUEST_DISABLED_UNIT_GET_CITY) < 1;
+	case MINOR_CIV_QUEST_SPY_ON_MAJOR:
+		return !GC.getGame().isOption(GAMEOPTION_NO_ESPIONAGE) && (MOD_BALANCE_VP || !GC.getGame().isOption(GAMEOPTION_NO_SCIENCE)) && GD_INT_GET(QUEST_DISABLED_SPY_ON_MAJOR) < 1;
+	case MINOR_CIV_QUEST_COUP:
+		return !GC.getGame().isOption(GAMEOPTION_NO_ESPIONAGE) && GD_INT_GET(QUEST_DISABLED_COUP) < 1;
+	case MINOR_CIV_QUEST_ACQUIRE_CITY:
+		return !GC.getGame().isOption(GAMEOPTION_ALWAYS_PEACE) && GD_INT_GET(QUEST_DISABLED_ACQUIRE_CITY) < 1;
 	default:
 		return false;
 	}
@@ -6727,9 +6734,6 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 	}
 	case MINOR_CIV_QUEST_DENOUNCE_MAJOR:
 	{
-		if (GC.getGame().isOption(GAMEOPTION_NO_CHANGING_WAR_PEACE))
-			return false;
-
 		// Is there a recent bully?
 		if (!IsRecentlyBulliedByAnyMajor())
 			return false;
@@ -6748,6 +6752,10 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 
 		// This player must not have already denounced the most recent bully
 		if (GET_PLAYER(ePlayer).GetDiplomacyAI()->IsDenouncedPlayer(eMostRecentBully))
+			return false;
+
+		// Cannot denounce due to game options
+		if (GC.getGame().isOption(GAMEOPTION_NO_CHANGING_WAR_PEACE) && GET_PLAYER(ePlayer).IsAtWarWith(eMostRecentBully))
 			return false;
 
 		// Is this a bad target? (Same team, haven't met, backstabbing?)
@@ -6793,9 +6801,6 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 	}
 	case MINOR_CIV_QUEST_WAR:
 	{
-		if (GC.getGame().isOption(GAMEOPTION_NO_CHANGING_WAR_PEACE))
-			return false;
-
 		// Is there a recent bully?
 		if (!IsRecentlyBulliedByAnyMajor())
 			return false;
@@ -6924,9 +6929,6 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 	case MINOR_CIV_QUEST_HORDE:
 	case MINOR_CIV_QUEST_REBELLION:
 	{
-		if (GC.getGame().isOption(GAMEOPTION_NO_BARBARIANS))
-			return false;
-
 		if (GC.getGame().getGameTurn() < GC.getGame().GetBarbarianReleaseTurn())
 			return false;
 
@@ -6943,7 +6945,7 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 
 		break;
 	}
-	case MINOR_CIV_QUEST_DISCOVER_PLOT:
+	case MINOR_CIV_QUEST_DISCOVER_AREA:
 	{
 		if (GetTargetPlot(ePlayer) == NULL)
 			return false;
@@ -6957,8 +6959,8 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_STEAL_FROM:
-	case MINOR_CIV_QUEST_UNIT_COUP_CITY:
+	case MINOR_CIV_QUEST_SPY_ON_MAJOR:
+	case MINOR_CIV_QUEST_COUP:
 	{
 		// Don't create this quest until a player has entered the Renaissance
 		EraTypes eCurrentEra = GET_PLAYER(ePlayer).GetCurrentEra();
@@ -6966,12 +6968,12 @@ bool CvMinorCivAI::IsValidQuestForPlayer(PlayerTypes ePlayer, MinorCivQuestTypes
 		if (eCurrentEra < eRenaissance)
 			return false;
 
-		if (GetBestSpyTarget(ePlayer, eQuest == MINOR_CIV_QUEST_UNIT_COUP_CITY) == NULL)
+		if (GetBestSpyTarget(ePlayer, eQuest == MINOR_CIV_QUEST_COUP) == NULL)
 			return false;
 
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_GET_CITY:
+	case MINOR_CIV_QUEST_ACQUIRE_CITY:
 	{
 		if (GetBestCityForQuest(ePlayer) == NULL)
 			return false;
@@ -7114,10 +7116,11 @@ int CvMinorCivAI::GetMinPlayersNeededForQuest(MinorCivQuestTypes eQuest) const
 	return iPlayersNeeded;
 }
 
-/// How more or less likely is this minor to offer a particular quest type based on its personality?
-int CvMinorCivAI::GetPersonalityQuestBias(MinorCivQuestTypes eQuest) const
+/// How more or less likely is this minor to offer a particular quest type based on its trait and personality?
+/// Default is 10 copies of each quest. Minimum 1 copy of each valid quest.
+int CvMinorCivAI::GetNumQuestCopies(MinorCivQuestTypes eQuest) const
 {
-	int iWeight = 1000; // 10 copies is the base amount; x100 for greater fidelity
+	int iNumCopies = 0;
 	MinorCivPersonalityTypes ePersonality = GetPersonality();
 	MinorCivTraitTypes eTrait = GetTrait();
 
@@ -7127,497 +7130,1061 @@ int CvMinorCivAI::GetPersonalityQuestBias(MinorCivQuestTypes eQuest) const
 
 	switch (eQuest)
 	{
-	case NO_MINOR_CIV_QUEST_TYPE:
-		UNREACHABLE();
 	case MINOR_CIV_QUEST_ROUTE:
 	{
-		if (ePersonality == MINOR_CIV_PERSONALITY_FRIENDLY)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_ROUTE_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_FRIENDLY_ROUTE);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ROUTE_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ROUTE_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ROUTE_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*5*/ GD_INT_GET(MINOR_CIV_QUEST_ROUTE_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*2*/ GD_INT_GET(MINOR_CIV_QUEST_ROUTE_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else if (ePersonality == MINOR_CIV_PERSONALITY_HOSTILE)
+
+		switch (ePersonality)
 		{
-			iWeight *= /*20*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_HOSTILE_ROUTE);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*10*/ GD_INT_GET(MINOR_CIV_QUEST_ROUTE_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ROUTE_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*-8*/ GD_INT_GET(MINOR_CIV_QUEST_ROUTE_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ROUTE_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		if (eTrait == MINOR_CIV_TRAIT_MARITIME)
-		{
-			iWeight *= /*120*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_ROUTE);
-			iWeight /= 100;
-		}
-		else if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
-		{
-			iWeight *= /*150*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_ROUTE);
-			iWeight /= 100;
-		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_CONNECT_RESOURCE:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_MARITIME)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_CONNECT_RESOURCE_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_CONNECT_RESOURCE);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONNECT_RESOURCE_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONNECT_RESOURCE_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*10*/ GD_INT_GET(MINOR_CIV_QUEST_CONNECT_RESOURCE_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*20*/ GD_INT_GET(MINOR_CIV_QUEST_CONNECT_RESOURCE_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONNECT_RESOURCE_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
+
+		switch (ePersonality)
 		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_CONNECT_RESOURCE);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONNECT_RESOURCE_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONNECT_RESOURCE_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONNECT_RESOURCE_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONNECT_RESOURCE_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_CONSTRUCT_WONDER:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_CULTURED)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_WONDER_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_CULTURED_CONSTRUCT_WONDER);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*20*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_WONDER_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_WONDER_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_WONDER_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_WONDER_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_WONDER_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_WONDER_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_WONDER_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_WONDER_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_WONDER_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_GREAT_PERSON:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_CULTURED)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_GREAT_PERSON_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_CULTURED_GREAT_PERSON);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*20*/ GD_INT_GET(MINOR_CIV_QUEST_GREAT_PERSON_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GREAT_PERSON_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GREAT_PERSON_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GREAT_PERSON_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GREAT_PERSON_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GREAT_PERSON_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GREAT_PERSON_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GREAT_PERSON_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GREAT_PERSON_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
 		break;
 	}
-	case MINOR_CIV_QUEST_KILL_CITY_STATE:
-	{
-		if (eTrait == MINOR_CIV_TRAIT_MILITARISTIC)
-		{
-			iWeight *= /*200 in CP, 150 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MILITARISTIC_KILL_CITY_STATE);
-			iWeight /= 100;
-		}
-		else if (MOD_BALANCE_CORE_MINORS && eTrait == MINOR_CIV_TRAIT_RELIGIOUS)
-		{
-			iWeight *= /*100*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_RELIGIOUS_KILL_CITY_STATE);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*40 in CP, 33 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_NEUTRAL_KILL_CITY_STATE);
-			iWeight /= 100;
-		}
-		if (ePersonality == MINOR_CIV_PERSONALITY_HOSTILE)
-		{
-			iWeight *= /*200 in CP, 150 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_HOSTILE_KILL_CITY_STATE);
-			iWeight /= 100;
-		}
-		else if (MOD_BALANCE_CORE_MINORS && ePersonality == MINOR_CIV_PERSONALITY_IRRATIONAL)
-		{
-			iWeight *= /*75*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_IRRATIONAL_KILL_CITY_STATE);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*40 in CP, 33 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_NEUTRAL_KILL_CITY_STATE);
-			iWeight /= 100;
-		}
-		break;
-	}
+
 	case MINOR_CIV_QUEST_FIND_PLAYER:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_MARITIME)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_PLAYER_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_FIND_PLAYER);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_PLAYER_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_PLAYER_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*20*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_PLAYER_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*10*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_PLAYER_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_PLAYER_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
+
+		switch (ePersonality)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_FIND_PLAYER);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_PLAYER_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_PLAYER_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_PLAYER_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_PLAYER_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_FIND_CITY:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_MARITIME)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_FIND_CITY);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*20*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*10*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
+
+		switch (ePersonality)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_FIND_CITY);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_FIND_NATURAL_WONDER:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_MILITARISTIC)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_NATURAL_WONDER_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*50*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MILITARISTIC_FIND_NATURAL_WONDER);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_NATURAL_WONDER_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*-5*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_NATURAL_WONDER_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_NATURAL_WONDER_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_NATURAL_WONDER_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_NATURAL_WONDER_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		if (ePersonality == MINOR_CIV_PERSONALITY_HOSTILE)
+
+		switch (ePersonality)
 		{
-			iWeight *= /*30*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_HOSTILE_FIND_NATURAL_WONDER);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_NATURAL_WONDER_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_NATURAL_WONDER_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*-7*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_NATURAL_WONDER_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_NATURAL_WONDER_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_GIVE_GOLD:
 	{
-		// Money, that's what I need.
-		if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
+		iNumCopies = /*30*/ GD_INT_GET(MINOR_CIV_QUEST_GIVE_GOLD_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*350*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_GIVE_GOLD);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIVE_GOLD_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC: // We're tough, we don't need your charity >:(
+			iNumCopies += /*-10*/ GD_INT_GET(MINOR_CIV_QUEST_GIVE_GOLD_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIVE_GOLD_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE: // Money, that's what I need.
+			iNumCopies += /*5*/ GD_INT_GET(MINOR_CIV_QUEST_GIVE_GOLD_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIVE_GOLD_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		// We're tough, we don't need your charity >:(
-		else if (eTrait == MINOR_CIV_TRAIT_MILITARISTIC)
+
+		switch (ePersonality)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MILITARISTIC_GIVE_GOLD);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIVE_GOLD_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIVE_GOLD_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIVE_GOLD_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIVE_GOLD_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else
-		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_GIVE_GOLD);
-			iWeight /= 100;
-		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_PLEDGE_TO_PROTECT:
 	{
-		// Military? What's that?
-		if (eTrait == MINOR_CIV_TRAIT_CULTURED)
+		iNumCopies = /*30*/ GD_INT_GET(MINOR_CIV_QUEST_PLEDGE_TO_PROTECT_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*350*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_CULTURED_PLEDGE_TO_PROTECT);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED: // Military? We don't have one of those!
+			iNumCopies += /*5*/ GD_INT_GET(MINOR_CIV_QUEST_PLEDGE_TO_PROTECT_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC: // We're tough, we can take care of ourselves.
+			iNumCopies += /*-10*/ GD_INT_GET(MINOR_CIV_QUEST_PLEDGE_TO_PROTECT_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_PLEDGE_TO_PROTECT_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*5*/ GD_INT_GET(MINOR_CIV_QUEST_PLEDGE_TO_PROTECT_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_PLEDGE_TO_PROTECT_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		// We're tough, we don't need your charity >:(
-		else if (eTrait == MINOR_CIV_TRAIT_MILITARISTIC)
+
+		switch (ePersonality)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MILITARISTIC_PLEDGE_TO_PROTECT);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_PLEDGE_TO_PROTECT_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_PLEDGE_TO_PROTECT_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_PLEDGE_TO_PROTECT_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_PLEDGE_TO_PROTECT_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else
-		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_PLEDGE_TO_PROTECT);
-			iWeight /= 100;
-		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_BULLY_CITY_STATE:
 	{
-		if (ePersonality == MINOR_CIV_PERSONALITY_HOSTILE)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_BULLY_CITY_STATE_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_HOSTILE_BULLY_CITY_STATE);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BULLY_CITY_STATE_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BULLY_CITY_STATE_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BULLY_CITY_STATE_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BULLY_CITY_STATE_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BULLY_CITY_STATE_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else if (ePersonality == MINOR_CIV_PERSONALITY_IRRATIONAL)
+
+		switch (ePersonality)
 		{
-			iWeight *= /*150*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_IRRATIONAL_BULLY_CITY_STATE);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*-7*/ GD_INT_GET(MINOR_CIV_QUEST_BULLY_CITY_STATE_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BULLY_CITY_STATE_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*10*/ GD_INT_GET(MINOR_CIV_QUEST_BULLY_CITY_STATE_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*5*/ GD_INT_GET(MINOR_CIV_QUEST_BULLY_CITY_STATE_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else if (ePersonality == MINOR_CIV_PERSONALITY_FRIENDLY)
-		{
-			iWeight *= /*30*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_FRIENDLY_BULLY_CITY_STATE);
-			iWeight /= 100;
-		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_DENOUNCE_MAJOR:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_RELIGIOUS)
+		iNumCopies = /*15*/ GD_INT_GET(MINOR_CIV_QUEST_DENOUNCE_MAJOR_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*250*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_RELIGIOUS_DENOUNCE_MAJOR);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DENOUNCE_MAJOR_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DENOUNCE_MAJOR_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*5*/ GD_INT_GET(MINOR_CIV_QUEST_DENOUNCE_MAJOR_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DENOUNCE_MAJOR_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*10*/ GD_INT_GET(MINOR_CIV_QUEST_DENOUNCE_MAJOR_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else if (eTrait == MINOR_CIV_TRAIT_MARITIME)
+
+		switch (ePersonality)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_DENOUNCE_MAJOR);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DENOUNCE_MAJOR_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DENOUNCE_MAJOR_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DENOUNCE_MAJOR_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DENOUNCE_MAJOR_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else
-		{
-			iWeight *= /*150*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_DENOUNCE_MAJOR);
-			iWeight /= 100;
-		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_SPREAD_RELIGION:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_RELIGIOUS)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_SPREAD_RELIGION_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_RELIGIOUS_SPREAD_RELIGION);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPREAD_RELIGION_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPREAD_RELIGION_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPREAD_RELIGION_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPREAD_RELIGION_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*20*/ GD_INT_GET(MINOR_CIV_QUEST_SPREAD_RELIGION_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPREAD_RELIGION_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPREAD_RELIGION_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPREAD_RELIGION_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPREAD_RELIGION_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
 		break;
 	}
+
 	case MINOR_CIV_QUEST_TRADE_ROUTE:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_MARITIME)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_TRADE_ROUTE_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_TRADE_ROUTE);
-			iWeight /= 100;
-		}
-		else if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
-		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_TRADE_ROUTE);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_DISCOVER_PLOT: // Explore a region
-	{
-		if (eTrait == MINOR_CIV_TRAIT_MARITIME)
-		{
-			iWeight *= /*275*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_DISCOVER_PLOT);
-			iWeight /= 100;
-		}
-		else if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
-		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_DISCOVER_PLOT);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*50*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_DISCOVER_PLOT);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_BUILD_X_BUILDINGS: // Build X copies of a building throughout your empire
-	{
-		if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
-		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_BUILD_BUILDINGS);
-			iWeight /= 100;
-		}
-		else if (ePersonality == MINOR_CIV_PERSONALITY_FRIENDLY)
-		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_FRIENDLY_BUILD_BUILDINGS);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*150*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_BUILD_BUILDINGS);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_UNIT_STEAL_FROM: // Spy on a major civ X times
-	{
-		if (ePersonality == MINOR_CIV_PERSONALITY_HOSTILE)
-		{
-			iWeight *= /*350*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_HOSTILE_SPY_ON_MAJOR);
-			iWeight /= 100;
-		}
-		else if (ePersonality == MINOR_CIV_PERSONALITY_FRIENDLY)
-		{
-			iWeight *= /*50*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_FRIENDLY_SPY_ON_MAJOR);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_TRADE_ROUTE_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_TRADE_ROUTE_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*10*/ GD_INT_GET(MINOR_CIV_QUEST_TRADE_ROUTE_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*10*/ GD_INT_GET(MINOR_CIV_QUEST_TRADE_ROUTE_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_TRADE_ROUTE_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
 
-		if (eTrait == MINOR_CIV_TRAIT_CULTURED)
+		switch (ePersonality)
 		{
-			iWeight *= /*125*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_CULTURED_SPY_ON_MAJOR);
-			iWeight /= 100;
-		}
-		else if (eTrait == MINOR_CIV_TRAIT_RELIGIOUS)
-		{
-			iWeight *= /*50*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_RELIGIOUS_SPY_ON_MAJOR);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*75*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_SPY_ON_MAJOR);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_UNIT_COUP_CITY: // Successful coup against a City-State
-	{
-		if (ePersonality == MINOR_CIV_PERSONALITY_HOSTILE)
-		{
-			iWeight *= /*400*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_HOSTILE_COUP);
-			iWeight /= 100;
-		}
-		else if (ePersonality == MINOR_CIV_PERSONALITY_FRIENDLY)
-		{
-			iWeight *= /*75*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_FRIENDLY_COUP);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_TRADE_ROUTE_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_TRADE_ROUTE_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_TRADE_ROUTE_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_TRADE_ROUTE_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
 
-		if (eTrait == MINOR_CIV_TRAIT_MARITIME)
-		{
-			iWeight *= /*175*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_COUP);
-			iWeight /= 100;
-		}
-		else if (eTrait == MINOR_CIV_TRAIT_CULTURED)
-		{
-			iWeight *= /*50*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_CULTURED_COUP);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*150*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_COUP);
-			iWeight /= 100;
-		}
 		break;
 	}
-	case MINOR_CIV_QUEST_UNIT_GET_CITY: // Capture a city
+
+	case MINOR_CIV_QUEST_WAR:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_MILITARISTIC)
+		iNumCopies = /*15*/ GD_INT_GET(MINOR_CIV_QUEST_WAR_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*500*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MILITARISTIC_CAPTURE_CITY);
-			iWeight /= 100;
-		}
-		else if (ePersonality == MINOR_CIV_PERSONALITY_HOSTILE)
-		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_HOSTILE_CAPTURE_CITY);
-			iWeight /= 100;
-		}
-		else if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
-		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_CAPTURE_CITY);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*25*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_CAPTURE_CITY);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED: // Help!!
+			iNumCopies += /*40*/ GD_INT_GET(MINOR_CIV_QUEST_WAR_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC: // How dare they bully us? We'll make them pay!
+			iNumCopies += /*70*/ GD_INT_GET(MINOR_CIV_QUEST_WAR_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_WAR_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_WAR_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_WAR_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
 
-		if (ePersonality == MINOR_CIV_PERSONALITY_FRIENDLY)
+		switch (ePersonality)
 		{
-			iWeight *= /*25*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_FRIENDLY_CAPTURE_CITY);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_WAR_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_WAR_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE: // Vengeance will be ours!
+			iNumCopies += /*50*/ GD_INT_GET(MINOR_CIV_QUEST_WAR_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_WAR_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
+
 		break;
 	}
-	case MINOR_CIV_QUEST_WAR: // Declare war on target major
-	{
-		// How dare they bully us?
-		if (eTrait == MINOR_CIV_TRAIT_MILITARISTIC)
-		{
-			iWeight *= /*800*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MILITARISTIC_WAR);
-			iWeight /= 100;
-		}
-		// Arrrgh!
-		else if (ePersonality == MINOR_CIV_PERSONALITY_HOSTILE)
-		{
-			iWeight *= /*600*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_HOSTILE_WAR);
-			iWeight /= 100;
-		}
-		// Help!!
-		else if (eTrait == MINOR_CIV_TRAIT_CULTURED)
-		{
-			iWeight *= /*500*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_CULTURED_WAR);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*125*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_WAR);
-			iWeight /= 100;
-		}
-		break;
-	}
+
 	case MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_CULTURED)
+		iNumCopies = /*7*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_CULTURED_NATIONAL_WONDER);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*75*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_NATIONAL_WONDER);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT:
-	{
-		if (eTrait == MINOR_CIV_TRAIT_MILITARISTIC)
-		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MILITARISTIC_GIFT_SPECIFIC_UNIT);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*75*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_GIFT_SPECIFIC_UNIT);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_FIND_CITY_STATE:
-	{
-		if (eTrait == MINOR_CIV_TRAIT_MARITIME)
-		{
-			iWeight *= /*115*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_FIND_CITY_STATE);
-			iWeight /= 100;
-		}
-		else if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
-		{
-			iWeight *= /*120*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_FIND_CITY_STATE);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_ARCHAEOLOGY:
-	{
-		// Recover the spoils of ancient war!
-		if (eTrait == MINOR_CIV_TRAIT_MILITARISTIC)
-		{
-			iWeight *= /*250*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MILITARISTIC_ARCHAEOLOGY);
-			iWeight /= 100;
-		}
-		// Religious relics, you say?
-		else if (eTrait == MINOR_CIV_TRAIT_RELIGIOUS)
-		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_RELIGIOUS_ARCHAEOLOGY);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*75*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_ARCHAEOLOGY);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_CIRCUMNAVIGATION:
-	{
-		// We are the masters of the sea!
-		if (eTrait == MINOR_CIV_TRAIT_MARITIME)
-		{
-			iWeight *= /*250*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MARITIME_CIRCUMNAVIGATION);
-			iWeight /= 100;
-		}
-		break;
-	}
-	// Liberate a City-State
-	case MINOR_CIV_QUEST_LIBERATION:
-	{
-		// Our friends were in that city!
-		if (ePersonality == MINOR_CIV_PERSONALITY_FRIENDLY)
-		{
-			iWeight *= /*400*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_FRIENDLY_LIBERATION);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*23*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
 
-		// War beckons - will you answer?
-		if (eTrait == MINOR_CIV_TRAIT_MILITARISTIC)
+		switch (ePersonality)
 		{
-			iWeight *= /*600*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MILITARISTIC_LIBERATION);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONSTRUCT_NATIONAL_WONDER_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else if (eTrait == MINOR_CIV_TRAIT_RELIGIOUS)
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT:
+	{
+		iNumCopies = /*7*/ GD_INT_GET(MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*500*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_RELIGIOUS_LIBERATION);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*13*/ GD_INT_GET(MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else
+
+		switch (ePersonality)
 		{
-			iWeight *= /*50*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_LIBERATION);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_GIFT_SPECIFIC_UNIT_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_FIND_CITY_STATE:
+	{
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_STATE_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_STATE_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_STATE_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*1*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_STATE_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*2*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_STATE_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_STATE_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_STATE_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_STATE_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_STATE_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_FIND_CITY_STATE_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_LIBERATION:
+	{
+		iNumCopies = /*5*/ GD_INT_GET(MINOR_CIV_QUEST_LIBERATION_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_LIBERATION_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC: // War beckons - will you answer?
+			iNumCopies += /*55*/ GD_INT_GET(MINOR_CIV_QUEST_LIBERATION_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_LIBERATION_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_LIBERATION_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*45*/ GD_INT_GET(MINOR_CIV_QUEST_LIBERATION_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY: // Our friends were in that city!
+			iNumCopies += /*35*/ GD_INT_GET(MINOR_CIV_QUEST_LIBERATION_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_LIBERATION_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_LIBERATION_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_LIBERATION_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_DISCOVER_AREA:
+	{
+		iNumCopies = /*5*/ GD_INT_GET(MINOR_CIV_QUEST_DISCOVER_AREA_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DISCOVER_AREA_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DISCOVER_AREA_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*22*/ GD_INT_GET(MINOR_CIV_QUEST_DISCOVER_AREA_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*15*/ GD_INT_GET(MINOR_CIV_QUEST_DISCOVER_AREA_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DISCOVER_AREA_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DISCOVER_AREA_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DISCOVER_AREA_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DISCOVER_AREA_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_DISCOVER_AREA_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_BUILD_X_BUILDINGS:
+	{
+		iNumCopies = /*15*/ GD_INT_GET(MINOR_CIV_QUEST_BUILD_X_BUILDINGS_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BUILD_X_BUILDINGS_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BUILD_X_BUILDINGS_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BUILD_X_BUILDINGS_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*5*/ GD_INT_GET(MINOR_CIV_QUEST_BUILD_X_BUILDINGS_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BUILD_X_BUILDINGS_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*5*/ GD_INT_GET(MINOR_CIV_QUEST_BUILD_X_BUILDINGS_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BUILD_X_BUILDINGS_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BUILD_X_BUILDINGS_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_BUILD_X_BUILDINGS_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_SPY_ON_MAJOR:
+	{
+		iNumCopies = /*7*/ GD_INT_GET(MINOR_CIV_QUEST_SPY_ON_MAJOR_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*8*/ GD_INT_GET(MINOR_CIV_QUEST_SPY_ON_MAJOR_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPY_ON_MAJOR_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPY_ON_MAJOR_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPY_ON_MAJOR_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*-2*/ GD_INT_GET(MINOR_CIV_QUEST_SPY_ON_MAJOR_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*-5*/ GD_INT_GET(MINOR_CIV_QUEST_SPY_ON_MAJOR_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPY_ON_MAJOR_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*28*/ GD_INT_GET(MINOR_CIV_QUEST_SPY_ON_MAJOR_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_SPY_ON_MAJOR_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_COUP:
+	{
+		iNumCopies = /*15*/ GD_INT_GET(MINOR_CIV_QUEST_COUP_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*-8*/ GD_INT_GET(MINOR_CIV_QUEST_COUP_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_COUP_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*8*/ GD_INT_GET(MINOR_CIV_QUEST_COUP_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_COUP_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_COUP_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*-5*/ GD_INT_GET(MINOR_CIV_QUEST_COUP_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_COUP_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*30*/ GD_INT_GET(MINOR_CIV_QUEST_COUP_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_COUP_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_ACQUIRE_CITY:
+	{
+		iNumCopies = /*2*/ GD_INT_GET(MINOR_CIV_QUEST_ACQUIRE_CITY_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ACQUIRE_CITY_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*48*/ GD_INT_GET(MINOR_CIV_QUEST_ACQUIRE_CITY_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ACQUIRE_CITY_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*18*/ GD_INT_GET(MINOR_CIV_QUEST_ACQUIRE_CITY_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ACQUIRE_CITY_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*-35*/ GD_INT_GET(MINOR_CIV_QUEST_ACQUIRE_CITY_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ACQUIRE_CITY_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*25*/ GD_INT_GET(MINOR_CIV_QUEST_ACQUIRE_CITY_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ACQUIRE_CITY_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
 		break;
 	}
 
@@ -7627,96 +8194,562 @@ int CvMinorCivAI::GetPersonalityQuestBias(MinorCivQuestTypes eQuest) const
 
 	case MINOR_CIV_QUEST_KILL_CAMP:
 	{
-		iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_KILL_CAMP);
-		iWeight /= 100;
+		iNumCopies = /*30*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CAMP_COPIES_BASE);
 
-		if (eTrait == MINOR_CIV_TRAIT_MILITARISTIC)
+		switch (eTrait)
 		{
-			iWeight *= /*300*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MILITARISTIC_KILL_CAMP);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CAMP_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*30*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CAMP_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CAMP_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CAMP_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CAMP_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CAMP_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CAMP_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CAMP_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CAMP_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
 		break;
 	}
+
+	// NOTE: This is a personal quest in Community Patch only
+	case MINOR_CIV_QUEST_KILL_CITY_STATE:
+	{
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CITY_STATE_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0 in CP, -5 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CITY_STATE_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*10 in CP, 5 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CITY_STATE_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0 in CP, -5 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CITY_STATE_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0 in CP, -5 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CITY_STATE_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CITY_STATE_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY: // In Community Patch only, friendly CS will not give this quest at all
+			iNumCopies += /*-5*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CITY_STATE_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*-6 in CP, -5 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CITY_STATE_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*10 in CP, 5 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CITY_STATE_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0 in CP, -2 in VP*/ GD_INT_GET(MINOR_CIV_QUEST_KILL_CITY_STATE_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
 	case MINOR_CIV_QUEST_CONTEST_CULTURE:
 	{
-		if (eTrait == MINOR_CIV_TRAIT_CULTURED)
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_CULTURE_COPIES_BASE);
+
+		switch (eTrait)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_CULTURED_CONTEST_CULTURE);
-			iWeight /= 100;
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*10*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_CULTURE_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_CULTURE_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_CULTURE_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_CULTURE_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_CULTURE_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		break;
-	}
-	case MINOR_CIV_QUEST_CONTEST_FAITH:
-	{
-		if (eTrait == MINOR_CIV_TRAIT_RELIGIOUS)
+
+		switch (ePersonality)
 		{
-			iWeight *= /*200*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_RELIGIOUS_CONTEST_FAITH);
-			iWeight /= 100;
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_CULTURE_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_CULTURE_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_CULTURE_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_CULTURE_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
 		}
-		else
-		{
-			iWeight *= /*50*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_CONTEST_FAITH);
-			iWeight /= 100;
-		}
+
 		break;
-	}
-	case MINOR_CIV_QUEST_CONTEST_TECHS:
-	{
-		if (eTrait == MINOR_CIV_TRAIT_RELIGIOUS)
-		{
-			iWeight *= /*50*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_RELIGIOUS_CONTEST_TECHS);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_INVEST:
-	{
-		if (eTrait == MINOR_CIV_TRAIT_MERCANTILE)
-		{
-			iWeight *= /*150*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_MERCANTILE_INVEST);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_INFLUENCE:
-	{
-		// Leave us alone!
-		if (ePersonality == MINOR_CIV_PERSONALITY_HOSTILE)
-		{
-			iWeight *= /*50*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_HOSTILE_INFLUENCE);
-			iWeight /= 100;
-		}
-		else
-		{
-			iWeight *= /*70*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_OTHER_INFLUENCE);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_CONTEST_TOURISM:
-	{
-		if (ePersonality == MINOR_CIV_PERSONALITY_FRIENDLY)
-		{
-			iWeight *= /*130*/ GD_INT_GET(MINOR_CIV_QUEST_WEIGHT_MULTIPLIER_FRIENDLY_TOURISM);
-			iWeight /= 100;
-		}
-		break;
-	}
-	case MINOR_CIV_QUEST_HORDE:
-	{
-		iWeight *= /*300*/ GD_INT_GET(BARBARIAN_HORDE_FREQUENCY);
-		iWeight /= 100;
-		break;
-	}
-	case MINOR_CIV_QUEST_REBELLION:
-	{
-		iWeight *= /*700*/ GD_INT_GET(QUEST_REBELLION_FREQUENCY);
-		iWeight /= 100;
-		break;
-	}
 	}
 
-	return max(iWeight/100, 1);
+	case MINOR_CIV_QUEST_CONTEST_FAITH:
+	{
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_FAITH_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*-5*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_FAITH_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*-5*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_FAITH_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*-5*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_FAITH_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*-5*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_FAITH_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*10*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_FAITH_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_FAITH_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_FAITH_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_FAITH_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_FAITH_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_CONTEST_TECHS:
+	{
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TECHS_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TECHS_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TECHS_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TECHS_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TECHS_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*-5*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TECHS_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TECHS_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TECHS_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TECHS_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TECHS_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_INVEST:
+	{
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_INVEST_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INVEST_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INVEST_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INVEST_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE: // Money, that's what I need.
+			iNumCopies += /*5*/ GD_INT_GET(MINOR_CIV_QUEST_INVEST_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INVEST_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INVEST_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INVEST_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INVEST_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INVEST_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_INFLUENCE:
+	{
+		iNumCopies = /*7*/ GD_INT_GET(MINOR_CIV_QUEST_INFLUENCE_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INFLUENCE_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INFLUENCE_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INFLUENCE_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INFLUENCE_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INFLUENCE_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INFLUENCE_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INFLUENCE_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE: // Leave us alone!
+			iNumCopies += /*-2*/ GD_INT_GET(MINOR_CIV_QUEST_INFLUENCE_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_INFLUENCE_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_CONTEST_TOURISM:
+	{
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TOURISM_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TOURISM_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TOURISM_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TOURISM_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TOURISM_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TOURISM_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*3*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TOURISM_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TOURISM_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TOURISM_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CONTEST_TOURISM_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_ARCHAEOLOGY:
+	{
+		iNumCopies = /*7*/ GD_INT_GET(MINOR_CIV_QUEST_ARCHAEOLOGY_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ARCHAEOLOGY_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC: // Recover the spoils of ancient war!
+			iNumCopies += /*18*/ GD_INT_GET(MINOR_CIV_QUEST_ARCHAEOLOGY_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ARCHAEOLOGY_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ARCHAEOLOGY_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS: // Religious relics, you say?
+			iNumCopies += /*23*/ GD_INT_GET(MINOR_CIV_QUEST_ARCHAEOLOGY_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ARCHAEOLOGY_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ARCHAEOLOGY_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ARCHAEOLOGY_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_ARCHAEOLOGY_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_CIRCUMNAVIGATION:
+	{
+		iNumCopies = /*10*/ GD_INT_GET(MINOR_CIV_QUEST_CIRCUMNAVIGATION_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CIRCUMNAVIGATION_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CIRCUMNAVIGATION_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME: // We are the masters of the sea!
+			iNumCopies += /*15*/ GD_INT_GET(MINOR_CIV_QUEST_CIRCUMNAVIGATION_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CIRCUMNAVIGATION_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CIRCUMNAVIGATION_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CIRCUMNAVIGATION_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CIRCUMNAVIGATION_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CIRCUMNAVIGATION_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_CIRCUMNAVIGATION_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_HORDE:
+	{
+		iNumCopies = /*30*/ GD_INT_GET(MINOR_CIV_QUEST_HORDE_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_HORDE_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_HORDE_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_HORDE_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_HORDE_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_HORDE_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_HORDE_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_HORDE_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_HORDE_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_HORDE_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	case MINOR_CIV_QUEST_REBELLION:
+	{
+		iNumCopies = /*70*/ GD_INT_GET(MINOR_CIV_QUEST_REBELLION_COPIES_BASE);
+
+		switch (eTrait)
+		{
+		case MINOR_CIV_TRAIT_CULTURED:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_REBELLION_COPIES_CULTURED);
+			break;
+		case MINOR_CIV_TRAIT_MILITARISTIC:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_REBELLION_COPIES_MILITARISTIC);
+			break;
+		case MINOR_CIV_TRAIT_MARITIME:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_REBELLION_COPIES_MARITIME);
+			break;
+		case MINOR_CIV_TRAIT_MERCANTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_REBELLION_COPIES_MERCANTILE);
+			break;
+		case MINOR_CIV_TRAIT_RELIGIOUS:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_REBELLION_COPIES_RELIGIOUS);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		switch (ePersonality)
+		{
+		case MINOR_CIV_PERSONALITY_FRIENDLY:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_REBELLION_COPIES_FRIENDLY);
+			break;
+		case MINOR_CIV_PERSONALITY_NEUTRAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_REBELLION_COPIES_NEUTRAL);
+			break;
+		case MINOR_CIV_PERSONALITY_HOSTILE:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_REBELLION_COPIES_HOSTILE);
+			break;
+		case MINOR_CIV_PERSONALITY_IRRATIONAL:
+			iNumCopies += /*0*/ GD_INT_GET(MINOR_CIV_QUEST_REBELLION_COPIES_IRRATIONAL);
+			break;
+		default:
+			UNREACHABLE();
+		}
+
+		break;
+	}
+
+	default:
+		break;
+	}
+
+	return max(iNumCopies, 1);
 }
 
 /// ASSUMPTION: There is no more than one active quest of any given MinorCivQuestTypes
@@ -8146,7 +9179,7 @@ CvString CvMinorCivAI::GetTargetCityString(PlayerTypes ePlayer, MinorCivQuestTyp
 			PlayerTypes eTargetPlayer = (PlayerTypes)m_QuestsGiven[ePlayer][iQuestLoop].m_iData3;
 			if (eTargetPlayer != NO_PLAYER)
 			{
-				int iX = eType == m_QuestsGiven[ePlayer][iQuestLoop].m_iData1;
+				int iX = m_QuestsGiven[ePlayer][iQuestLoop].m_iData1;
 				int iY = m_QuestsGiven[ePlayer][iQuestLoop].m_iData2;
 				CvPlot* pPlot = GC.getMap().plot(iX, iY);
 				if(pPlot != NULL && pPlot->isCity())
@@ -8699,7 +9732,7 @@ bool CvMinorCivAI::IsAcceptableQuestEnemy(MinorCivQuestTypes eQuest, PlayerTypes
 
 	vector<PlayerTypes> vPlayerTeam = GET_TEAM(ePlayerTeam).getPlayers();
 
-	if (eQuest == MINOR_CIV_QUEST_WAR || eQuest == MINOR_CIV_QUEST_LIBERATION || eQuest == MINOR_CIV_QUEST_UNIT_GET_CITY) // Quests which require going to war
+	if (eQuest == MINOR_CIV_QUEST_WAR || eQuest == MINOR_CIV_QUEST_LIBERATION || eQuest == MINOR_CIV_QUEST_ACQUIRE_CITY) // Quests which require going to war
 	{
 		vector<PlayerTypes> vDefensiveWarAllies = GET_PLAYER(ePlayer).GetDiplomacyAI()->GetDefensiveWarAllies(eEnemyPlayer, /*bIncludeMinors*/ false, /*bReverseMode*/ true, /*bNewWarsOnly*/ true);
 		vDefensiveWarAllies.push_back(eEnemyPlayer);
@@ -8885,6 +9918,12 @@ BuildingTypes CvMinorCivAI::GetBestWorldWonderForQuest(PlayerTypes ePlayer, int 
 			int iCityLoop = 0;
 			for (CvCity* pLoopCity = GET_PLAYER(eLoopPlayer).firstCity(&iCityLoop); pLoopCity != NULL; pLoopCity = GET_PLAYER(eLoopPlayer).nextCity(&iCityLoop))
 			{
+				if (pLoopCity->GetCityBuildings()->GetNumBuilding(eBuilding) > 0)
+				{
+					bFoundWonderTooFarAlong = true;
+					break;
+				}
+
 				int iWonderProgress = pLoopCity->GetCityBuildings()->GetBuildingProduction(eBuilding);
 				int iPercentCompleted = iWonderProgress * 100 / pLoopCity->getProductionNeeded(eBuilding);
 				if (iCompletionThreshold > 0 && iPercentCompleted >= iCompletionThreshold)
@@ -9020,6 +10059,9 @@ BuildingTypes CvMinorCivAI::GetBestNationalWonderForQuest(PlayerTypes ePlayer, i
 		int iCityLoop = 0;
 		for (CvCity* pLoopCity = GET_PLAYER(ePlayer).firstCity(&iCityLoop); pLoopCity != NULL; pLoopCity = GET_PLAYER(ePlayer).nextCity(&iCityLoop))
 		{
+			if (pLoopCity->GetCityBuildings()->GetNumBuilding(eBuilding) > 0)
+				break;
+
 			// Don't look at cities in resistance, being razed, about to fall, or that can't construct the Wonder
 			if (pLoopCity->IsResistance() || pLoopCity->IsRazing() || pLoopCity->isInDangerOfFalling(true))
 				continue;
@@ -9284,6 +10326,9 @@ PlayerTypes CvMinorCivAI::GetBestCityStateTarget(PlayerTypes ePlayer, bool bKill
 				if (eTargetAlly != NO_PLAYER && GET_PLAYER(eTargetAlly).getTeam() == GET_PLAYER(ePlayer).getTeam())
 					continue;
 
+				if (!GET_PLAYER(ePlayer).IsAtWarWith(eTarget) && !GET_TEAM(GET_PLAYER(ePlayer).getTeam()).canDeclareWar(GET_PLAYER(eTarget).getTeam(), ePlayer))
+					continue;
+
 				for (size_t i=0; i<vPlayerTeam.size(); i++)
 				{
 					if (!GET_PLAYER(vPlayerTeam[i]).isAlive() || !GET_PLAYER(vPlayerTeam[i]).isMajorCiv())
@@ -9418,7 +10463,7 @@ CvCity* CvMinorCivAI::GetBestCityForQuest(PlayerTypes ePlayer)
 		// Is the city owner an unacceptable target (same team, haven't met, backstabbing)?
 		if (GET_PLAYER(eTarget).isMajorCiv())
 		{
-			if (!IsAcceptableQuestEnemy(MINOR_CIV_QUEST_UNIT_GET_CITY, ePlayer, eTarget))
+			if (!IsAcceptableQuestEnemy(MINOR_CIV_QUEST_ACQUIRE_CITY, ePlayer, eTarget))
 				continue;
 		}
 		else if (GET_PLAYER(eTarget).isMinorCiv())
@@ -9556,9 +10601,23 @@ BuildingTypes CvMinorCivAI::GetBestBuildingForQuest(PlayerTypes ePlayer, int iDu
 			continue;
 
 		// Must be able to build it in all cities.
+		int iNumCitiesAlreadyBuilt = 0;
 		int iCityLoop = 0;
 		for (CvCity* pLoopCity = GET_PLAYER(ePlayer).firstCity(&iCityLoop, true); pLoopCity != NULL; pLoopCity = GET_PLAYER(ePlayer).nextCity(&iCityLoop, true))
 		{
+			if (pLoopCity->GetCityBuildings()->GetNumBuilding(eBuilding) > 0)
+			{
+				iNumCitiesAlreadyBuilt++;
+
+				// Haven't built this building in more than one city already.
+				if (iNumCitiesAlreadyBuilt > 1)
+				{
+					bBad = true;
+					break;
+				}
+
+				continue;
+			}
 			if (!pLoopCity->canConstruct(eBuilding,allBuildingCount))
 			{
 				bBad = true;
@@ -9572,10 +10631,6 @@ BuildingTypes CvMinorCivAI::GetBestBuildingForQuest(PlayerTypes ePlayer, int iDu
 			}
 		}
 		if (bBad)
-			continue;
-
-		// Haven't built this building more than once already.
-		if (GET_PLAYER(ePlayer).getNumBuildings(eBuilding) > 1)
 			continue;
 
 		veValidBuildings.push_back(eBuilding);
@@ -9648,7 +10703,6 @@ UnitTypes CvMinorCivAI::GetBestUnitGiftFromPlayer(PlayerTypes ePlayer)
 			continue;
 
 		// Can we train the unit type this unit upgrades to?
-		bValid = true;
 		for (int iI = 0; iI < GC.getNumUnitClassInfos(); iI++)
 		{
 			const UnitClassTypes eUnitClass = static_cast<UnitClassTypes>(iI);
@@ -9906,7 +10960,7 @@ CvCity* CvMinorCivAI::GetBestSpyTarget(PlayerTypes ePlayer, bool bMinor)
 				continue;
 
 			PlayerTypes eAlly = GET_PLAYER(eTarget).GetMinorCivAI()->GetAlly();
-			if (eAlly == NO_PLAYER || !IsAcceptableQuestEnemy(MINOR_CIV_QUEST_UNIT_COUP_CITY, ePlayer, eAlly))
+			if (eAlly == NO_PLAYER || !IsAcceptableQuestEnemy(MINOR_CIV_QUEST_COUP, ePlayer, eAlly))
 				continue;
 		}
 		else
@@ -9914,7 +10968,7 @@ CvCity* CvMinorCivAI::GetBestSpyTarget(PlayerTypes ePlayer, bool bMinor)
 			if (GET_PLAYER(eTarget).isMinorCiv())
 				continue;
 
-			if (!IsAcceptableQuestEnemy(MINOR_CIV_QUEST_UNIT_STEAL_FROM, ePlayer, eTarget))
+			if (!IsAcceptableQuestEnemy(MINOR_CIV_QUEST_SPY_ON_MAJOR, ePlayer, eTarget))
 				continue;
 		}
 
@@ -10214,15 +11268,22 @@ CvCity* CvMinorCivAI::GetBestCityToFind(PlayerTypes ePlayer)
 		if (eLoopTeam == eTeam)
 			continue;
 
+		// Must have met the owner of the city
 		if (!GET_TEAM(eTeam).isHasMet(eLoopTeam))
 			continue;
 
 		int iCityLoop = 0;
 		for (CvCity* pLoopCity = GET_PLAYER(eLoopPlayer).firstCity(&iCityLoop); pLoopCity != NULL; pLoopCity = GET_PLAYER(eLoopPlayer).nextCity(&iCityLoop))
 		{
+			// No major civ capitals, they're too easy to find (Accept Embassy)
+			if (GET_PLAYER(eLoopPlayer).isMajorCiv() && pLoopCity->isCapital())
+				continue;
+
+			// No cities that are currently being destroyed
 			if (pLoopCity->IsRazing())
 				continue;
 
+			// Must not be revealed yet
 			CvPlot* pPlot = pLoopCity->plot();
 			if (pPlot == NULL || pPlot->isRevealed(eTeam))
 				continue;
@@ -17175,13 +18236,10 @@ TechTypes CvMinorCivAI::GetGoodTechPlayerDoesntHave(PlayerTypes ePlayer, int iRo
 /// Checks to see if the majority religion of the city-state is the religion that this major has founded
 bool CvMinorCivAI::IsSameReligionAsMajor(PlayerTypes eMajor)
 {
-	//don't use the capital, this is faster and mostly equivalent for a minor
-	int dummy = 0;
-	CvPlayer* pkPlayer = GetPlayer();
-	const CvCity* pkCity = pkPlayer->firstCity(&dummy);
-	if (pkCity)
+	CvCity* pCapital = GetPlayer()->getCapitalCity();
+	if (pCapital)
 	{
-		ReligionTypes eMinorReligion = pkCity->GetCityReligions()->GetReligiousMajority();
+		ReligionTypes eMinorReligion = pCapital->GetCityReligions()->GetReligiousMajority();
 		ReligionTypes eMajorReligion = GET_PLAYER(eMajor).GetReligions()->GetOwnedReligion();
 
 		if (eMajorReligion != NO_RELIGION && eMajorReligion == eMinorReligion)
