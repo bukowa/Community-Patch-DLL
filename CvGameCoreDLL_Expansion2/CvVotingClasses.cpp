@@ -5033,12 +5033,12 @@ float CvLeague::GetContributionTierThreshold(ContributionTier eTier, LeagueProje
 	{
 	case CONTRIBUTION_TIER_1:
 		{
-			fThreshold = /*0.5f*/ GD_FLOAT_GET(LEAGUE_PROJECT_REWARD_TIER_1_THRESHOLD) * GetProjectCostPerPlayer(eLeagueProject);
+			fThreshold = GetProjectCostPerPlayer(eLeagueProject) * /*0.5f*/ GD_FLOAT_GET(LEAGUE_PROJECT_REWARD_TIER_1_THRESHOLD);
 			break;
 		}
 	case CONTRIBUTION_TIER_2:
 		{
-			fThreshold = /*1.0f*/ GD_FLOAT_GET(LEAGUE_PROJECT_REWARD_TIER_2_THRESHOLD) * GetProjectCostPerPlayer(eLeagueProject);
+			fThreshold = GetProjectCostPerPlayer(eLeagueProject) * /*1.0f*/ GD_FLOAT_GET(LEAGUE_PROJECT_REWARD_TIER_2_THRESHOLD);
 			break;
 		}
 	case CONTRIBUTION_TIER_3:
@@ -5052,7 +5052,7 @@ float CvLeague::GetContributionTierThreshold(ContributionTier eTier, LeagueProje
 					iBestContribution = iContribution;
 				}
 			}
-			fThreshold = MAX((float)iBestContribution, GC.getLEAGUE_PROJECT_REWARD_TIER_2_THRESHOLD() * GetProjectCostPerPlayer(eLeagueProject));
+			fThreshold = MAX((float)iBestContribution, GetProjectCostPerPlayer(eLeagueProject) * /*1.0f*/ GD_FLOAT_GET(LEAGUE_PROJECT_REWARD_TIER_2_THRESHOLD));
 			break;
 		}
 	default:

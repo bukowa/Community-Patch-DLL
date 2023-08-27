@@ -16,7 +16,6 @@
 !*.Civ5Map
 !*.dds
 !*.def
-!*.dll
 !*.filters
 !*.ftsxml
 !*.fxsxml
@@ -29,7 +28,6 @@
 !*.iss
 !*.lib
 !*.md
-!*.modinfo
 !*.mp3
 !*.natvis
 !*.py

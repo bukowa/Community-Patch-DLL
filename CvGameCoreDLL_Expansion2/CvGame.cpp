@@ -11699,7 +11699,7 @@ void CvGame::Read(FDataStream& kStream)
 
 		CUSTOMLOG("Savefile was generated from gamecore version %s", save_gamecore_version.c_str());
 		if (strcmp(save_gamecore_version.c_str(), CURRENT_GAMECORE_VERSION)!=0)
-			CUSTOMLOG("----> Save version mismatch!");
+			CUSTOMLOG("----> Potential savefile format mismatch!");
 	}
 
 	CvStreamLoadVisitor serialVisitor(kStream);
