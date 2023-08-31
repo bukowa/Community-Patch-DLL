@@ -2195,7 +2195,6 @@ public:
 
 #endif
 
-#if defined(MOD_NOT_FOR_SALE)
 	const std::vector<ResourceTypes>& GetResourcesNotForSale() const { return m_vResourcesNotForSale; }
 	bool IsResourceNotForSale(ResourceTypes eResource);
 	void SetResourceAvailable(ResourceTypes eResource);
@@ -2218,7 +2217,6 @@ public:
 
 	bool IsRefuseResearchAgreementTrade();
 	void SetRefuseResearchAgreementTrade(bool refuseTrade);
-#endif
 
 	bool IsResourceCityTradeable(ResourceTypes eResource, bool bCheckTeam = true) const;
 	bool IsResourceRevealed(ResourceTypes eResource, bool bCheckTeam = true) const;
@@ -2376,9 +2374,6 @@ public:
 
 	int GetYieldFromWLTKD(YieldTypes eYield) const;
 	void ChangeYieldFromWLTKD(YieldTypes eYield, int iChange);
-
-	int getBuildingClassYieldChange(BuildingClassTypes eIndex1, YieldTypes eIndex2) const;
-	void changeBuildingClassYieldChange(BuildingClassTypes eIndex1, YieldTypes eIndex2, int iChange);
 
 #if defined(MOD_BALANCE_CORE_RESOURCE_MONOPOLIES)
 	int getSpecificGreatPersonRateModifierFromMonopoly(GreatPersonTypes eIndex1, MonopolyTypes eIndex2) const;
@@ -3661,7 +3656,6 @@ protected:
 	int m_iCombatDefenseBonusFromMonopolies;
 #endif
 
-#if defined(MOD_NOT_FOR_SALE)
 	std::vector<ResourceTypes> m_vResourcesNotForSale;
 	bool m_refuseOpenBordersTrade;
 	bool m_refuseEmbassyTrade;
@@ -3669,7 +3663,6 @@ protected:
 	bool m_refuseBrokeredWarTrade;
 	bool m_refuseBrokeredPeaceTrade;
 	bool m_refuseResearchAgreementTrade;
-#endif
 
 	std::vector<bool> m_pabGetsScienceFromPlayer;
 
@@ -3694,7 +3687,6 @@ protected:
 	std::vector<int> m_piYieldChangeWorldWonder;
 	std::vector<int> m_piYieldFromMinorDemand;
 	std::vector<int> m_piYieldFromWLTKD;
-	std::vector< Firaxis::Array<int, NUM_YIELD_TYPES > > m_ppiBuildingClassYieldChange;
 	std::vector< Firaxis::Array<int, NUM_YIELD_TYPES > > m_ppaaiImprovementYieldChange;
 #if defined(MOD_BALANCE_CORE_RESOURCE_MONOPOLIES)
 	std::map<GreatPersonTypes, std::map<MonopolyTypes, int>> m_ppiSpecificGreatPersonRateModifierFromMonopoly;
@@ -4427,7 +4419,6 @@ SYNC_ARCHIVE_VAR(std::vector<bool>, m_pabHasGlobalMonopoly)
 SYNC_ARCHIVE_VAR(std::vector<bool>, m_pabHasStrategicMonopoly)
 SYNC_ARCHIVE_VAR(std::vector<bool>, m_pabGetsScienceFromPlayer)
 SYNC_ARCHIVE_VAR(SYNC_ARCHIVE_VAR_TYPE(std::vector< Firaxis::Array<int, NUM_YIELD_TYPES > >), m_ppaaiSpecialistExtraYield)
-SYNC_ARCHIVE_VAR(SYNC_ARCHIVE_VAR_TYPE(std::vector< Firaxis::Array<int, NUM_YIELD_TYPES > >), m_ppiBuildingClassYieldChange)
 SYNC_ARCHIVE_VAR(SYNC_ARCHIVE_VAR_TYPE(std::vector< Firaxis::Array<int, NUM_YIELD_TYPES > >), m_ppaaiImprovementYieldChange)
 SYNC_ARCHIVE_VAR(bool, m_bEverPoppedGoody)
 SYNC_ARCHIVE_VAR(bool, m_bEverTrainedBuilder)

@@ -5183,9 +5183,8 @@ bool CvPlayerTrade::PlunderTradeRoute(int iTradeConnectionID, CvUnit* pUnit)
 void CvPlayerTrade::UpdateFurthestPossibleTradeRoute(DomainTypes eDomain, CvCity* pOriginCity, int iMaxRange)
 {
 	// don't calculate trade routes for minors
-	if (m_pPlayer->isMinorCiv()) {
+	if (m_pPlayer->isMinorCiv())
 		return;
-	}
 
 	int iLongestRoute = 0;
 	
