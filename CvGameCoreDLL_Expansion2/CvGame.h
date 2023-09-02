@@ -39,6 +39,61 @@ class CvGameCorporations;
 class CvGameContracts;
 #endif
 
+unsigned long hash32(uint input);
+
+/// Helper type for producing seed values.
+struct NODISCARD CvSeeder {
+	uint value;
+
+	inline CvSeeder() : value(0) {}
+	template<typename T> explicit inline CvSeeder(T value) : value(hash32(static_cast<uint>(value))) {}
+	inline CvSeeder(const CvSeeder& other) : value(other.value) {}
+
+	inline static CvSeeder fromRaw(uint rawValue)
+	{
+		CvSeeder newSeed;
+		newSeed.value = rawValue;
+		return newSeed;
+	}
+
+	template<typename T> inline CvSeeder& mixRawAssign(T otherValue)
+	{
+		value ^= static_cast<uint>(otherValue) + 0x9e3779b9 + (value << 6) + (value >> 2);
+		return *this;
+	}
+
+	template<typename T> inline CvSeeder& mixAssign(T otherValue)
+	{
+		return mixRawAssign(hash32(static_cast<uint>(otherValue)));
+	}
+
+	// `mixAssign` is specialized for mixing two seeders.
+	// This is done to avoid rehashing the value within the seeder because it is presumably already hashed.
+	template<> inline CvSeeder& mixAssign<CvSeeder>(CvSeeder otherSeed)
+	{
+		return mixRawAssign(otherSeed.value);
+	}
+
+	template<typename T> inline CvSeeder mixRaw(T otherValue) const
+	{
+		CvSeeder newSeed = *this;
+		newSeed.mixRawAssign(otherValue);
+		return newSeed;
+	}
+
+	template<typename T> inline CvSeeder mix(T otherValue) const
+	{
+		CvSeeder newSeed = *this;
+		newSeed.mixAssign(otherValue);
+		return newSeed;
+	}
+
+	inline operator uint() const
+	{
+		return value;
+	}
+};
+
 class CvGameInitialItemsOverrides
 {
 public:
@@ -505,12 +560,84 @@ public:
 	int getJonRandNumVA(int iNum, const char* pszLog, ...);
 	int getAsyncRandNum(int iNum, const char* pszLog);
 
-#if defined(MOD_CORE_REDUCE_RANDOMNESS)
-	//get random number from gamestate without a seed in the generator
-	int	getSmallFakeRandNum(int iNum, const CvPlot& input) const;
-	int	getSmallFakeRandNum(int iNum, int iExtraSeed) const;
-	int	getSmallFakeRandNum(int iNum, int iExtraSeed, const CvPlot& input) const;
-#endif
+	/// Generates a pseudo-random 32-bit number using the game's current state and an extra seed.
+	///
+	/// The number returned by this function is derived from the following parameters and consistent for any unique set:
+	/// - The game's map seed.
+	/// - The game's current turn.
+	/// - The provided extra seed.
+	///
+	/// Given that the returned number is consistent for any unique set of the above parameters, the user should make an effort to
+	/// ensure that the provided extra seed is different for any number of consecutive calls that occur on a single turn.
+	/// Failure to do so will lead to the same number being returned for each consecutive call on any given turn.
+	///
+	/// If this function is used to generate a number that is subsequently used to change the game state in manner that all peers
+	/// of a multiplayer session must replicate to retain synchronization, then the extra seed must be guaranteed to be identical 
+	/// for all peers of that multiplayer session. If this requirement is not met, then the multiplayer session will desynchronize.
+	uint randCore(CvSeeder extraSeed) const;
+
+	/// Generates a pseudo-random number using `randCore` and remaps the output into an exclusive range within `0` and `limit`.
+	/// Specifically, if `x` is the returned unsigned integer, then `x` is guaranteed to satisfy the following:
+	/// - `x >= 0`
+	/// - `x < limit`
+	///
+	/// The following invariants must be satisfied for function to operate correctly:
+	/// - `limit != 0`
+	///
+	/// All advisories documented on `randCore` apply to this function.
+	uint urandLimitExclusive(uint limit, CvSeeder extraSeed) const;
+
+	/// Generates a pseudo-random number using `randCore` and remaps the output into an inclusive range within `0` and `limit`.
+	/// Specifically, if `x` is the returned unsigned integer, then `x` is guaranteed to satisfy the following:
+	/// - `x >= 0`
+	/// - `x <= limit`
+	///
+	/// All advisories documented on `randCore` apply to this function.
+	uint urandLimitInclusive(uint limit, CvSeeder extraSeed) const;
+
+	/// Generates a pseudo-random number using `randCore` and remaps the output into an exclusive range within `min` and `max`.
+	/// Specifically, if `x` is the returned unsigned integer, then `x` is guaranteed to satisfy the following:
+	/// - `x >= min`
+	/// - `x < max`
+	///
+	/// The following invariants must be satisfied for the function to operate correctly:
+	/// - `min < max`
+	///
+	/// All advisories documented on `randCore` apply to this function.
+	uint urandRangeExclusive(uint min, uint max, CvSeeder extraSeed) const;
+
+	/// Generates a pseudo-random number using `randCore` and remaps the output into an inclusive range within `min` and `max`.
+	/// Specifically, if `x` is the returned unsigned integer, then `x` is guaranteed to satisfy the following:
+	/// - `x >= min`
+	/// - `x <= max`
+	///
+	/// The following invariants must be satisfied for the function to operate correctly:
+	/// - `min <= max`
+	///
+	/// All advisories documented on `randCore` apply to this function.
+	uint urandRangeInclusive(uint min, uint max, CvSeeder extraSeed) const;
+
+	/// Generates a pseudo-random number using `randCore` and remaps the output into an exclusive range within `min` and `max`.
+	/// Specifically, if `x` is the returned signed integer, then `x` is guaranteed to satisfy the following:
+	/// - `x >= min`
+	/// - `x < max`
+	///
+	/// The following invariants must be satisfied for the function to operate correctly:
+	/// - `min < max`
+	///
+	/// All advisories documented on `randCore` apply to this function.
+	int randRangeExclusive(int min, int max, CvSeeder extraSeed) const;
+
+	/// Generates a pseudo-random number using `randCore` and remaps the output into an inclusive range within `min` and `max`.
+	/// Specifically, if `x` is the returned signed integer, then `x` is guaranteed to satisfy the following:
+	/// - `x >= min`
+	/// - `x <= max`
+	///
+	/// The following invariants must be satisfied for the function to operate correctly:
+	/// - `min <= max`
+	/// 
+	/// All advisories documented on `randCore` apply to this function.
+	int randRangeInclusive(int min, int max, CvSeeder extraSeed) const;
 
 	int calculateSyncChecksum();
 	int calculateOptionsChecksum();
