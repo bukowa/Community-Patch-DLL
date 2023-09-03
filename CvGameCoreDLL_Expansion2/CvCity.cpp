@@ -23739,14 +23739,29 @@ int CvCity::GetUnhappinessFromOccupation() const
 		return 0;
 
 	int iPopulation = getPopulation();
+	if (!MOD_BALANCE_VP && GET_PLAYER(getOwner()).isHalfSpecialistUnhappiness())
+	{
+		int iSpecialistCount = GetCityCitizens()->GetTotalSpecialistCount();
+		iSpecialistCount++; // Round up
+		iPopulation -= (iSpecialistCount / 2);
+	}
+
 	float fUnhappiness = 0.00f;
-	fUnhappiness += iPopulation * /*1.00f*/ GD_FLOAT_GET(UNHAPPINESS_PER_OCCUPIED_POPULATION);
+	fUnhappiness += iPopulation * /*1.34f in CP, 1.00f in VP*/ GD_FLOAT_GET(UNHAPPINESS_PER_OCCUPIED_POPULATION);
+	if (!MOD_BALANCE_VP)
+		fUnhappiness *= 100;
+
+	fUnhappiness *= 100 + GET_PLAYER(getOwner()).GetPlayerTraits()->GetPopulationUnhappinessModifier();
+	fUnhappiness /= 100;
 
 	if (HasGarrison())
 	{
 		fUnhappiness *= 100 + GET_PLAYER(getOwner()).GetGarrisonsOccupiedUnhappinessMod();
 		fUnhappiness /= 100;
 	}
+
+	if (!MOD_BALANCE_VP)
+		return (int)fUnhappiness;
 
 	int iLimit = MOD_BALANCE_CORE_UNCAPPED_UNHAPPINESS ? INT_MAX : iPopulation;
 	return range((int)fUnhappiness, 0, iLimit);
@@ -32442,16 +32457,14 @@ bool CvCity::doCheckProduction()
 				}
 
 				iProductionGold = ((iBuildingProduction * iMaxedBuildingGoldPercent) / 100);
-#if defined(MOD_BALANCE_CORE_BUILDING_INVESTMENTS)
 				const BuildingClassTypes eWonderClass = (BuildingClassTypes)pkExpiredBuildingInfo->GetBuildingClassType();
 				if (MOD_BALANCE_CORE_BUILDING_INVESTMENTS && IsBuildingInvestment(eWonderClass) && isWorldWonderClass(pkExpiredBuildingInfo->GetBuildingClassInfo()))
 				{
 					iProductionGold += ((25 * iMaxedBuildingGoldPercent) / 100);
 				}
-#endif
 				if (iProductionGold > 0 && isWorldWonderClass(pkExpiredBuildingInfo->GetBuildingClassInfo()))
 				{
-#if defined(MOD_BALANCE_CORE_WONDERS_VARIABLE_REWARD)
+					int iConsolationPrize = iProductionGold;
 					if (MOD_BALANCE_CORE_WONDERS_VARIABLE_REWARD && GD_INT_GET(BALANCE_WONDER_BEATEN_CONSOLATION_PRIZE) != 0)
 					{
 						int iEra = thisPlayer.GetCurrentEra();
@@ -32462,53 +32475,55 @@ bool CvCity::doCheckProduction()
 						if (GD_INT_GET(BALANCE_WONDER_BEATEN_CONSOLATION_PRIZE) == 1)
 						{
 							//Wonders converted into Gold (default).
-							thisPlayer.GetTreasury()->ChangeGold(iProductionGold * iEra);
+							iConsolationPrize = iProductionGold;
+							iConsolationPrize *= iEra;
+							thisPlayer.GetTreasury()->ChangeGold(iConsolationPrize);
 						}
 						if (GD_INT_GET(BALANCE_WONDER_BEATEN_CONSOLATION_PRIZE) == 2)
 						{
 							//Wonders converted into Culture Points.
-							iProductionGold = (iProductionGold * /*33*/ GD_INT_GET(BALANCE_CULTURE_PERCENTAGE_VALUE)) / 100;
-							thisPlayer.changeJONSCulture(iProductionGold * iEra);
-							ChangeJONSCultureStored(iProductionGold * iEra);
+							iConsolationPrize = (iProductionGold * /*33*/ GD_INT_GET(BALANCE_CULTURE_PERCENTAGE_VALUE)) / 100;
+							iConsolationPrize *= iEra;
+							thisPlayer.changeJONSCulture(iConsolationPrize);
+							ChangeJONSCultureStored(iConsolationPrize);
 						}
 						if (GD_INT_GET(BALANCE_WONDER_BEATEN_CONSOLATION_PRIZE) == 3)
 						{
 							//Wonders Converted into Golden Age Points.
-							iProductionGold = (iProductionGold * /*25*/ GD_INT_GET(BALANCE_GA_PERCENTAGE_VALUE)) / 100;
-							thisPlayer.ChangeGoldenAgeProgressMeter(iProductionGold * iEra);
+							iConsolationPrize = (iProductionGold * /*25*/ GD_INT_GET(BALANCE_GA_PERCENTAGE_VALUE)) / 100;
+							iConsolationPrize *= iEra;
+							thisPlayer.ChangeGoldenAgeProgressMeter(iConsolationPrize);
 						}
 						if (GD_INT_GET(BALANCE_WONDER_BEATEN_CONSOLATION_PRIZE) == 4)
 						{
 							//Wonders Converted into Science Points
-							iProductionGold = (iProductionGold * /*10*/ GD_INT_GET(BALANCE_SCIENCE_PERCENTAGE_VALUE)) / 100;
-							int iBeakersBonus = thisPlayer.getYieldPerTurnHistory(YIELD_SCIENCE, iProductionGold);
-							if (iBeakersBonus > 0)
+							int iScienceTurns = (iProductionGold * /*10*/ GD_INT_GET(BALANCE_SCIENCE_PERCENTAGE_VALUE)) / 100;
+							iConsolationPrize = thisPlayer.getYieldPerTurnHistory(YIELD_SCIENCE, iScienceTurns) * iEra;
+							if (iConsolationPrize > 0)
 							{
 								TechTypes eCurrentTech = thisPlayer.GetPlayerTechs()->GetCurrentResearch();
 								if (eCurrentTech == NO_TECH)
 								{
-									thisPlayer.changeOverflowResearch(iBeakersBonus * iEra);
+									thisPlayer.changeOverflowResearch(iConsolationPrize);
 								}
 								else
 								{
-									GET_TEAM(thisPlayer.getTeam()).GetTeamTechs()->ChangeResearchProgress(eCurrentTech, (iBeakersBonus * iEra), thisPlayer.GetID());
+									GET_TEAM(thisPlayer.getTeam()).GetTeamTechs()->ChangeResearchProgress(eCurrentTech, iConsolationPrize, thisPlayer.GetID());
 								}
 							}
 						}
 						if (GD_INT_GET(BALANCE_WONDER_BEATEN_CONSOLATION_PRIZE) == 5)
 						{
 							//Wonders Converted into Faith Points
-							iProductionGold = (iProductionGold * /*10*/ GD_INT_GET(BALANCE_FAITH_PERCENTAGE_VALUE)) / 100;
-							thisPlayer.ChangeFaith(iProductionGold * iEra);
+							iConsolationPrize = (iProductionGold * /*10*/ GD_INT_GET(BALANCE_FAITH_PERCENTAGE_VALUE)) / 100;
+							iConsolationPrize *= iEra;
+							thisPlayer.ChangeFaith(iConsolationPrize);
 						}
 					}
 					else
 					{
-#endif
-						thisPlayer.GetTreasury()->ChangeGold(iProductionGold);
-#if defined(MOD_BALANCE_CORE_WONDERS_VARIABLE_REWARD)
+						thisPlayer.GetTreasury()->ChangeGold(iConsolationPrize);
 					}
-#endif
 
 					if (getOwner() == GC.getGame().getActivePlayer())
 					{
@@ -32519,7 +32534,7 @@ bool CvCity::doCheckProduction()
 							Localization::String strText = Localization::Lookup("TXT_KEY_MISC_LOST_WONDER_PROD_CONVERTED");
 							strText << getNameKey();
 							strText << pkExpiredBuildingInfo->GetTextKey();
-							strText << iProductionGold;
+							strText << iConsolationPrize;
 							Localization::String strSummary = Localization::Lookup("TXT_KEY_MISC_LOST_WONDER_PROD_CONVERTED_S");
 							strSummary << getNameKey();
 							strSummary << pkExpiredBuildingInfo->GetTextKey();
