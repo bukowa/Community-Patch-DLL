@@ -13842,6 +13842,7 @@ void CvPlayer::receiveGoody(CvPlot* pPlot, GoodyTypes eGoody, CvUnit* pUnit)
 				}
 			}
 		}
+		GC.getGame().GetGameTrade()->InvalidateTradePathTeamCache(getTeam());
 	}
 
 	// Map
@@ -13932,6 +13933,11 @@ void CvPlayer::receiveGoody(CvPlot* pPlot, GoodyTypes eGoody, CvUnit* pUnit)
 				}
 			}
 		}
+
+		if (iNumPlotsRevealed > 0) {
+			GC.getGame().GetGameTrade()->InvalidateTradePathTeamCache(getTeam());
+		}
+
 		if (pUnit != NULL && pUnit->IsGainsXPFromScouting())
 		{
 			pUnit->changeExperienceTimes100(iNumPlotsRevealed * 100);
@@ -35274,8 +35280,13 @@ void CvPlayer::setTurnActive(bool bNewValue, bool bDoTurn) // R: bDoTurn default
 				GetTreasury()->DoUpdateCityConnectionGold();
 
 				//no tactical AI for human, only make sure we have current postures in case we want the AI to take over (debugging)
-				if (isHuman())
+				if (isHuman() || /* if MP, invalidate for AI too */ kGame.isNetworkMultiPlayer()) {
 					GetTacticalAI()->GetTacticalAnalysisMap()->Invalidate();
+				}
+
+				// update danger plots before the turn
+				// causes MP desyncs otherwise (see #10147), affects SP just a little
+				UpdateDangerPlots(false);
 
 				if(kGame.isFinalInitialized())
 				{
