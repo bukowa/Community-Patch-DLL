@@ -5671,6 +5671,23 @@ bool CvDealAI::IsMakeOfferForLuxuryResource(PlayerTypes eOtherPlayer, CvDeal* pD
 		}
 		else
 		{
+			if (MOD_NOT_FOR_SALE)
+			{
+				// Don't ask for a Luxury if player doesn't want to sell it
+				CvPlayer* pToPlayer = &GET_PLAYER(pDeal->GetToPlayer());
+
+				std::vector<ResourceTypes> resourcesNotForSale = pToPlayer->GetResourcesNotForSale();
+				std::vector<ResourceTypes>::iterator rIt;
+				for (rIt = resourcesNotForSale.begin(); rIt != resourcesNotForSale.end(); ++rIt)
+				{
+					ResourceTypes resourceToCheck = *rIt;
+					if (pDeal->ContainsItemType(TRADE_ITEM_RESOURCES, eOtherPlayer, resourceToCheck))
+					{
+						return false;
+					}
+				}
+			}
+
 			bool bUselessReferenceVariable = false;
 			bool bCantMatchOffer = false;
 			bDealAcceptable = DoEqualizeDealWithHuman(pDeal, eOtherPlayer, /*bDontChangeMyExistingItems*/ bUselessReferenceVariable, bCantMatchOffer);	// Change the deal as necessary to make it work
@@ -5775,6 +5792,23 @@ bool CvDealAI::IsMakeOfferForStrategicResource(PlayerTypes eOtherPlayer, CvDeal*
 		}
 		else
 		{
+			if (MOD_NOT_FOR_SALE)
+			{
+				// Don't ask for a strategic if player doesn't want to sell it
+				CvPlayer* pToPlayer = &GET_PLAYER(pDeal->GetToPlayer());
+
+				std::vector<ResourceTypes> resourcesNotForSale = pToPlayer->GetResourcesNotForSale();
+				std::vector<ResourceTypes>::iterator rIt;
+				for (rIt = resourcesNotForSale.begin(); rIt != resourcesNotForSale.end(); ++rIt)
+				{
+					ResourceTypes resourceToCheck = *rIt;
+					if (pDeal->ContainsItemType(TRADE_ITEM_RESOURCES, eOtherPlayer, resourceToCheck))
+					{
+						return false;
+					}
+				}
+			}
+
 			bool bUselessReferenceVariable = false;
 			bool bCantMatchOffer = false;
 			bDealAcceptable = DoEqualizeDealWithHuman(pDeal, eOtherPlayer, bUselessReferenceVariable, bCantMatchOffer);	// Change the deal as necessary to make it work
@@ -5827,6 +5861,16 @@ bool CvDealAI::IsMakeOfferForEmbassy(PlayerTypes eOtherPlayer, CvDeal* pDeal)
 		}
 		else
 		{
+			if (MOD_NOT_FOR_SALE)
+			{
+				// Don't ask if player doesn't want to trade for it
+				CvPlayer* pToPlayer = &GET_PLAYER(pDeal->GetToPlayer());
+				if (pToPlayer->IsRefuseEmbassyTrade())
+				{
+					return false;
+				}
+			}
+
 			bool bUselessReferenceVariable = false;
 			bool bCantMatchOffer = false;
 			bDealAcceptable = DoEqualizeDealWithHuman(pDeal, eOtherPlayer, bUselessReferenceVariable, bCantMatchOffer);	// Change the deal as necessary to make it work
@@ -5878,6 +5922,16 @@ bool CvDealAI::IsMakeOfferForOpenBorders(PlayerTypes eOtherPlayer, CvDeal* pDeal
 		}
 		else
 		{
+			if (MOD_NOT_FOR_SALE)
+			{
+				// Don't ask if player doesn't want to trade for it
+				CvPlayer* pToPlayer = &GET_PLAYER(pDeal->GetToPlayer());
+				if (pToPlayer->IsRefuseOpenBordersTrade())
+				{
+					return false;
+				}
+			}
+
 			bool bUselessReferenceVariable = false;
 			bool bCantMatchOffer = false;
 			bDealAcceptable = DoEqualizeDealWithHuman(pDeal, eOtherPlayer, bUselessReferenceVariable, bCantMatchOffer);	// Change the deal as necessary to make it work
@@ -5925,6 +5979,16 @@ bool CvDealAI::IsMakeOfferForResearchAgreement(PlayerTypes eOtherPlayer, CvDeal*
 	}
 	else
 	{
+		if (MOD_NOT_FOR_SALE)
+		{
+			// Don't ask if player doesn't want to trade for it
+			CvPlayer* pToPlayer = &GET_PLAYER(pDeal->GetToPlayer());
+			if (pToPlayer->IsRefuseResearchAgreementTrade())
+			{
+				return false;
+			}
+		}
+
 		bool bUselessReferenceVariable = false;
 		bool bCantMatchOffer = false;
 		bDealAcceptable = DoEqualizeDealWithHuman(pDeal, eOtherPlayer, bUselessReferenceVariable, bCantMatchOffer);	// Change the deal as necessary to make it work
@@ -5969,6 +6033,16 @@ bool CvDealAI::IsMakeOfferForDefensivePact(PlayerTypes eOtherPlayer, CvDeal* pDe
 	}
 	else
 	{
+		if (MOD_NOT_FOR_SALE)
+		{
+			// Don't ask if player doesn't want to trade for it
+			CvPlayer* pToPlayer = &GET_PLAYER(pDeal->GetToPlayer());
+			if (pToPlayer->IsRefuseDefensivePactTrade())
+			{
+				return false;
+			}
+		}
+
 		bool bUselessReferenceVariable = false;
 		bool bCantMatchOffer = false;
 
@@ -6184,6 +6258,16 @@ bool CvDealAI::IsMakeOfferForThirdPartyWar(PlayerTypes eOtherPlayer, CvDeal* pDe
 	}
 	else
 	{
+		if (MOD_NOT_FOR_SALE)
+		{
+			// Don't ask if player doesn't want to trade for it
+			CvPlayer* pToPlayer = &GET_PLAYER(pDeal->GetToPlayer());
+			if (pToPlayer->IsRefuseBrokeredWarTrade())
+			{
+				return false;
+			}
+		}
+
 		bool bUselessReferenceVariable = false;
 		bool bCantMatchOffer = false;
 		bDealAcceptable = DoEqualizeDealWithHuman(pDeal, eOtherPlayer, bUselessReferenceVariable, bCantMatchOffer);	// Change the deal as necessary to make it work
@@ -6281,6 +6365,16 @@ bool CvDealAI::IsMakeOfferForThirdPartyPeace(PlayerTypes eOtherPlayer, CvDeal* p
 	}
 	else
 	{
+		if (MOD_NOT_FOR_SALE)
+		{
+			// Don't ask if player doesn't want to trade for it
+			CvPlayer* pToPlayer = &GET_PLAYER(pDeal->GetToPlayer());
+			if (pToPlayer->IsRefuseBrokeredPeaceTrade())
+			{
+				return false;
+			}
+		}
+
 		bool bUselessReferenceVariable = false;
 		bool bCantMatchOffer = false;
 		bDealAcceptable = DoEqualizeDealWithHuman(pDeal, eOtherPlayer, bUselessReferenceVariable, bCantMatchOffer);	// Change the deal as necessary to make it work
