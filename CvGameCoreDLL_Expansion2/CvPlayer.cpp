@@ -881,7 +881,8 @@ void CvPlayer::init(PlayerTypes eID)
 	LeaderHeadTypes eBestPersonality;
 	int iValue = 0;
 	int iBestValue = 0;
-	int iI = 0, iJ = 0;
+	int iI = 0;
+	int iJ = 0;
 
 	// only allocate notifications for civs that players can play as
 	if(eID < MAX_MAJOR_CIVS)
@@ -2821,7 +2822,8 @@ CvPlot* CvPlayer::addFreeUnit(UnitTypes eUnit, bool bGameStart, UnitAITypes eUni
 		return NULL;
 
 	CvPlot* pBestPlot = NULL;
-	int iX = pStartingPlot->getX(), iY = pStartingPlot->getY();
+	int iX = pStartingPlot->getX();
+	int iY = pStartingPlot->getY();
 
 	// If this is a civilian or air unit, spawn it on the starting plot
 	bool bCombat = pkUnitInfo->GetCombat() > 0 || pkUnitInfo->GetRangedCombat() > 0 || pkUnitInfo->GetNukeDamageLevel() != -1;
@@ -3007,8 +3009,13 @@ CvCity* CvPlayer::acquireCity(CvCity* pCity, bool bConquest, bool bGift)
 	if (!pCityPlot)
 		return NULL;
 
-	PlayerTypes eOldOwner = pCity->getOwner(), ePreviousOwner = pCity->getPreviousOwner(), eOriginalOwner = pCity->getOriginalOwner();
-	int iCityX = pCity->getX(), iCityY = pCity->getY(), iPopulation = pCity->getPopulation(), iNumCities = getNumCities();
+	PlayerTypes eOldOwner = pCity->getOwner();
+	PlayerTypes ePreviousOwner = pCity->getPreviousOwner();
+	PlayerTypes eOriginalOwner = pCity->getOriginalOwner();
+	int iCityX = pCity->getX();
+	int iCityY = pCity->getY();
+	int iPopulation = pCity->getPopulation();
+	int iNumCities = getNumCities();
 	const CvCivilizationInfo& playerCivilizationInfo = getCivilizationInfo();
 
 	// Can't acquire a city from yourself
@@ -3100,7 +3107,8 @@ CvCity* CvPlayer::acquireCity(CvCity* pCity, bool bConquest, bool bGift)
 		}
 	}
 
-	int iCaptureGold = 0, iCaptureCulture = 0;
+	int iCaptureGold = 0;
+	int iCaptureCulture = 0;
 	bool bSlaughter = bConquest && !bGift;
 	bool bFirstConquest = false;
 
@@ -3204,7 +3212,8 @@ CvCity* CvPlayer::acquireCity(CvCity* pCity, bool bConquest, bool bGift)
 			int iCityValue = /*175*/ GD_INT_GET(WAR_DAMAGE_LEVEL_CITY_WEIGHT);
 			iCityValue += (iPopulation * /*150*/ GD_INT_GET(WAR_DAMAGE_LEVEL_INVOLVED_CITY_POP_MULTIPLIER));
 			iCityValue += (pCity->getNumWorldWonders() * /*200*/ GD_INT_GET(WAR_DAMAGE_LEVEL_WORLD_WONDER_MULTIPLIER));
-			int iWinnerProgressValue = /*100*/ GD_INT_GET(WAR_PROGRESS_CAPTURED_CITY), iLoserProgressValue = /*-50*/ GD_INT_GET(WAR_PROGRESS_LOST_CITY);
+			int iWinnerProgressValue = /*100*/ GD_INT_GET(WAR_PROGRESS_CAPTURED_CITY);
+			int iLoserProgressValue = /*-50*/ GD_INT_GET(WAR_PROGRESS_LOST_CITY);
 
 			// Multipliers
 			// Their original capital!
@@ -4777,7 +4786,8 @@ CvCity* CvPlayer::acquireCity(CvCity* pCity, bool bConquest, bool bGift)
 	if (pNewCity && isBarbarian())
 	{
 		// Extra units?
-		int iNumExtraUnits = /*0*/ GD_INT_GET(BARBARIAN_NUM_UNITS_CITY_CAPTURE_SPAWN), iEra = GC.getGame().getCurrentEra();
+		int iNumExtraUnits = /*0*/ GD_INT_GET(BARBARIAN_NUM_UNITS_CITY_CAPTURE_SPAWN);
+		int iEra = GC.getGame().getCurrentEra();
 		iNumExtraUnits += GC.getGame().isOption(GAMEOPTION_CHILL_BARBARIANS) ? /*0*/ GD_INT_GET(BARBARIAN_NUM_UNITS_CITY_CAPTURE_SPAWN_CHILL) : 0;
 		iNumExtraUnits += GC.getGame().isOption(GAMEOPTION_RAGING_BARBARIANS) ? /*0*/ GD_INT_GET(BARBARIAN_NUM_UNITS_CITY_CAPTURE_SPAWN_RAGING) : 0;
 		if (iEra > 0)
@@ -13132,7 +13142,8 @@ bool CvPlayer::canReceiveGoody(CvPlot* pPlot, GoodyTypes eGoody, CvUnit* pUnit)
 
 		bool bGood = false;
 		int iOffset = kGoodyInfo.getMapOffset();
-		int iDX = 0, iDY = 0;
+		int iDX = 0;
+		int iDY = 0;
 		for(iDX = -(iOffset); iDX <= iOffset; iDX++)
 		{
 			for(iDY = -(iOffset); iDY <= iOffset; iDY++)
@@ -13161,7 +13172,8 @@ bool CvPlayer::canReceiveGoody(CvPlot* pPlot, GoodyTypes eGoody, CvUnit* pUnit)
 	// Reveal Nearby Barbs
 	if(kGoodyInfo.getRevealNearbyBarbariansRange() > 0)
 	{
-		int iDX = 0, iDY = 0;
+		int iDX = 0;
+		int iDY = 0;
 		int iBarbCampDistance = kGoodyInfo.getRevealNearbyBarbariansRange();
 		CvPlot* pNearbyPlot = NULL;
 
@@ -13468,7 +13480,8 @@ void CvPlayer::receiveGoody(CvPlot* pPlot, GoodyTypes eGoody, CvUnit* pUnit)
 	int iValue = 0;
 	int iBestValue = 0;
 	int iPass = 0;
-	int iDX = 0, iDY = 0;
+	int iDX = 0;
+	int iDY = 0;
 	int iI = 0;
 
 	CvAssertMsg(canReceiveGoody(pPlot, eGoody, pUnit), "Instance is expected to be able to receive goody");
@@ -16858,7 +16871,8 @@ void CvPlayer::removeBuildingClass(BuildingClassTypes eBuildingClass)
 // What is the effect of a building on the player?
 void CvPlayer::processBuilding(BuildingTypes eBuilding, int iChange, bool bFirst, CvArea* pArea)
 {
-	int iI = 0, iJ = 0;
+	int iI = 0;
+	int iJ = 0;
 
 	CvBuildingEntry* pBuildingInfo = GC.getBuildingInfo(eBuilding);
 	if(pBuildingInfo == NULL)
@@ -19884,7 +19898,8 @@ void CvPlayer::DoDifficultyBonus(HistoricEventTypes eHistoricEvent)
 
 		if (iYieldHandicap > 0)
 		{
-			CvString strLogString, strTemp;
+			CvString strLogString;
+			CvString strTemp;
 			strLogString.Format("VP ");
 			if (isHuman())
 			{
@@ -20494,7 +20509,8 @@ void CvPlayer::DoDifficultyBonus(HistoricEventTypes eHistoricEvent)
 
 		if (iYieldHandicap > 0)
 		{
-			CvString strLogString, strTemp;
+			CvString strLogString;
+			CvString strTemp;
 			strLogString.Format("VP AI DIFFICULTY BONUS FROM ");
 
 			switch (eHistoricEvent)
@@ -31489,7 +31505,8 @@ int CvPlayer::GetHappinessFromMilitaryUnits() const
 	if (iHappyPerXUnits <= 0)
 		return 0;
 
-	int iLoop = 0, iCount = 0;
+	int iLoop = 0;
+	int iCount = 0;
 	for (const CvUnit* pLoopUnit = firstUnit(&iLoop); pLoopUnit != NULL; pLoopUnit = nextUnit(&iLoop))
 	{
 		if (pLoopUnit->IsCivilianUnit() || pLoopUnit->isDelayedDeath())
@@ -31507,7 +31524,8 @@ int CvPlayer::GetYieldFromMilitaryUnits(YieldTypes eIndex) const
 	if (iYieldPerXUnits <= 0)
 		return 0;
 
-	int iLoop = 0, iCount = 0;
+	int iLoop = 0;
+	int iCount = 0;
 	for (const CvUnit* pLoopUnit = firstUnit(&iLoop); pLoopUnit != NULL; pLoopUnit = nextUnit(&iLoop))
 	{
 		if (pLoopUnit->IsCivilianUnit() || pLoopUnit->isDelayedDeath())
@@ -38267,7 +38285,8 @@ void CvPlayer::SetProximityToPlayer(PlayerTypes ePlayer, PlayerProximityTypes eP
 			CvString strFileName = "PlayerProximityLog.csv";
 			FILogFile* pLog = NULL;
 			pLog = LOGFILEMGR.GetLog(strFileName, FILogFile::kDontTimeStamp);
-			CvString strLog, strTemp;
+			CvString strLog;
+			CvString strTemp;
 
 			CvString strPlayerName;
 			strPlayerName = getCivilizationShortDescription();
@@ -45350,7 +45369,8 @@ void CvPlayer::doWarnings()
 //	--------------------------------------------------------------------------------
 void CvPlayer::processPolicies(PolicyTypes ePolicy, int iChange)
 {
-	int iI = 0, iJ = 0;
+	int iI = 0;
+	int iJ = 0;
 
 	CvPolicyEntry* pPolicy = GC.getPolicyInfo(ePolicy);
 	if(pPolicy == NULL)
@@ -47208,7 +47228,8 @@ void CvPlayer::processCorporations(CorporationTypes eCorporation, int iChange)
 	if(pkCorporationEntry == NULL)
 		return;
 
-	int iI = 0, jJ = 0;
+	int iI = 0;
+	int jJ = 0;
 
 	for (iI = 0; iI < GC.getNUM_YIELD_TYPES(); iI++)
 	{
@@ -49787,7 +49808,8 @@ void CvPlayer::UpdateMilitaryStats()
 		m_iFractionOriginalCapitalsUnderControl = iOCCount * 100 / max(1, (iCivCount-1));
 	}
 
-	int iExpCount = 0, iExpSum = 0;
+	int iExpCount = 0;
+	int iExpSum = 0;
 	for (CvUnit* pLoopUnit = firstUnit(&iLoop); pLoopUnit != NULL; pLoopUnit = nextUnit(&iLoop))
 	{
 		if (pLoopUnit->IsCombatUnit() && pLoopUnit->AI_getUnitAIType() != UNITAI_EXPLORE)
