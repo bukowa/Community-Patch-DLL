@@ -14419,8 +14419,9 @@ void CvPlayer::doGoody(CvPlot* pPlot, CvUnit* pUnit)
 		return;
 
 	// Mod option: only recon units can claim ruins
-	if (MOD_BALANCE_CORE_GOODY_RECON_ONLY && pUnit && pUnit->getUnitCombatType() != (UnitCombatTypes) GC.getInfoTypeForString("UNITCOMBAT_RECON", true))
-		return;
+	if (MOD_BALANCE_CORE_GOODY_RECON_ONLY)
+		if (pUnit && pUnit->getUnitCombatType() != (UnitCombatTypes) GC.getInfoTypeForString("UNITCOMBAT_RECON", true) && !pUnit->IsGainsXPFromScouting())
+			return;
 
 	m_bEverPoppedGoody = true;
 	pPlot->removeGoody();
@@ -27964,6 +27965,11 @@ void CvPlayer::doInstantYield(InstantYieldType iType, bool bCityFaith, GreatPers
 							if (pAttackingUnit != NULL)
 							{
 								iKillYield += GC.getGame().GetGameReligions()->GetBeliefYieldForKill(eYield, pAttackingUnit->getX(), pAttackingUnit->getY(), GetID());
+
+								if (eYield == YIELD_GOLDEN_AGE_POINTS)
+								{
+									iKillYield += pAttackingUnit->GetGoldenAgeValueFromKills();
+								}
 
 								UnitTypes eAttackingUnitType = pAttackingUnit->getUnitType();
 
@@ -46373,7 +46379,7 @@ void CvPlayer::processPolicies(PolicyTypes ePolicy, int iChange)
 									if (pLoopCity->GetCityBuildings()->GetNumFreeBuilding(eBuilding) > 0)
 									{
 										CvBuildingEntry* pkBuilding = GC.getBuildingInfo(eBuilding);
-										if (pkBuilding && pkBuilding->IsCapitalOnly())
+										if (pkBuilding && !pkBuilding->IsCapitalOnly())
 											ChangeNumCitiesFreeChosenBuilding(eBuildingClass, -1);
 									}
 									if (pLoopCity->getFirstBuildingOrder(eBuilding) == 0)
