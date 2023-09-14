@@ -132,6 +132,7 @@ void CvPlayerAI::AI_doTurnPre()
 
 	AI_doResearch();
 	AI_considerAnnex();
+	AI_considerRaze();
 }
 
 
@@ -369,10 +370,13 @@ void CvPlayerAI::AI_conquerCity(CvCity* pCity, bool bGift, bool bAllowSphereRemo
 	}
 
 	//only city on a landmass? may be strategically important
+	bool bOnlyCityOnLandmass = false;
 	CvLandmass* pLandmass = GC.getMap().getLandmassById(pCity->plot()->getLandmass());
 	if (pLandmass != NULL && pLandmass->getCitiesPerPlayer(GetID()) < 1)
 	{
-		bKeepCity = true;
+		bOnlyCityOnLandmass = true;
+		if (!IsEmpireVeryUnhappy())
+			bKeepCity = true;
 	}
 
 	// If we're going for world conquest, have to keep any capitals we get
@@ -443,6 +447,12 @@ void CvPlayerAI::AI_conquerCity(CvCity* pCity, bool bGift, bool bAllowSphereRemo
 		if (bAllowSphereRemoval && GetPlayerPolicies()->GetNumericModifier(POLICYMOD_LIBERATION_BONUS) > 0)
 		{
 			DoLiberatePlayer(ePlayerToLiberate, pCity->GetID(), false, true);
+			return;
+		}
+
+		if (bOnlyCityOnLandmass && !IsEmpireSuperUnhappy())
+		{
+			pCity->DoCreatePuppet();
 			return;
 		}
 
@@ -765,6 +775,260 @@ void CvPlayerAI::AI_considerAnnex()
 				pTargetCity->DoAnnex();
 		}
 	}
+}
+
+void CvPlayerAI::AI_considerRaze()
+{
+	if (isHuman())
+		return;
+
+	AI_PERF("AI-perf.csv", "AI_ considerRaze");
+
+	// Only raze when super unhappy
+	int iNumCities = getNumCities();
+	if (!IsEmpireSuperUnhappy() || iNumCities == 1)
+		return;
+
+	int iCurrentHappiness = 0;
+	int iCurrentHappy = 0;
+	int iCurrentUnhappy = 0;
+	int iThreshold = /*-20 in CP, 20 in VP*/ GD_INT_GET(SUPER_UNHAPPY_THRESHOLD);
+	if (MOD_BALANCE_VP && iThreshold <= 0)
+		return;
+
+	// Look at our Unhappiness situation to see how much Unhappiness we need to remove
+	if (MOD_BALANCE_CORE_HAPPINESS)
+	{
+		iCurrentHappy = GetHappinessFromCitizenNeeds();
+		iCurrentUnhappy = GetUnhappinessFromCitizenNeeds();
+		// Protect against modder stupidity
+		if (iCurrentHappy <= 0)
+			return;
+
+		iCurrentHappiness = min(200, (iCurrentHappy * 100) / max(1, iCurrentUnhappy)) / 2;
+	}
+	else
+	{
+		iCurrentHappy = GetHappiness();
+		iCurrentUnhappy = GetUnhappiness();
+		iCurrentHappiness = iCurrentHappy - iCurrentUnhappy;
+	}
+
+	vector<CvCity*> EndangeredCities;
+	vector<CvCity*> ValidCities;
+	vector<PlayerTypes> vPlayersAtWarWith = GetPlayersAtWarWith();
+	int iLoop = 0;
+	for (CvCity* pLoopCity = firstCity(&iLoop); pLoopCity != NULL; pLoopCity = nextCity(&iLoop))
+	{
+		// Already razing a city?
+		if (pLoopCity->IsRazing())
+		{
+			iNumCities--;
+			iCurrentHappy -= pLoopCity->GetLocalHappiness();
+			iCurrentUnhappy -= pLoopCity->GetUnhappinessAggregated();
+			continue;
+		}
+
+		// Must be occupied (no puppets)
+		if (!pLoopCity->IsOccupied())
+			continue;
+
+		// Must be able to raze
+		if (!canRaze(pLoopCity))
+			continue;
+
+		// City is in danger of being captured? Raze with higher priority to deny our opponents the ability to capture it.
+		if (pLoopCity->IsInDangerFromPlayers(vPlayersAtWarWith))
+			EndangeredCities.push_back(pLoopCity);
+
+		ValidCities.push_back(pLoopCity);
+	}
+
+	// Recalculate happiness to see if we still have a problem ... possible we already have enough cities burning
+	if (MOD_BALANCE_CORE_HAPPINESS)
+	{
+		iCurrentHappiness = min(200, (iCurrentHappy * 100) / max(1, iCurrentUnhappy)) / 2;
+		if (iCurrentHappiness >= iThreshold)
+			return;
+	}
+	else
+	{
+		iCurrentHappiness = iCurrentHappy - iCurrentUnhappy;
+		if (iCurrentHappiness > iThreshold)
+			return;
+	}
+
+	// Go through our list of cities and see which ones we might raze
+	CvWeightedVector<CvCity*> RazeCandidates;
+	for (uint ui = 0; ui < ValidCities.size(); ui++)
+	{
+		CvCity* pLoopCity = ValidCities[ui];
+
+		// Would we gain Happiness from razing this city?
+		int iHappinessFromRazing = AI_computeHappinessFromRazing(pLoopCity, iCurrentHappy, iCurrentUnhappy);
+		if (iHappinessFromRazing <= 0)
+			continue;
+
+		RazeCandidates.push_back(pLoopCity, iHappinessFromRazing);
+	}
+
+	RazeCandidates.StableSortItems();
+	bool bDone = false;
+
+	// First priority: burn down endangered cities that we haven't built a courthouse in
+	for (int i = 0; i < RazeCandidates.size(); i++)
+	{
+		CvCity* pLoopCity = RazeCandidates.GetElement(i);
+		if (!pLoopCity->IsNoOccupiedUnhappiness() && std::find(EndangeredCities.begin(), EndangeredCities.end(), pLoopCity) != EndangeredCities.end())
+		{
+			iNumCities--;
+			iCurrentHappy -= pLoopCity->GetLocalHappiness();
+			iCurrentUnhappy -= pLoopCity->GetUnhappinessAggregated();
+
+			// Recalculate Happiness and test if we've met our goal
+			if (MOD_BALANCE_CORE_HAPPINESS)
+			{
+				iCurrentHappiness = min(200, (iCurrentHappy * 100) / max(1, iCurrentUnhappy)) / 2;
+				if (iCurrentHappiness >= iThreshold)
+					bDone = true;
+			}
+			else
+			{
+				iCurrentHappiness = iCurrentHappy - iCurrentUnhappy;
+				if (iCurrentHappiness > iThreshold)
+					bDone = true;
+			}
+
+			pLoopCity->doTask(TASK_RAZE);
+
+			if (bDone || iNumCities == 1)
+				return;
+		}
+	}
+	// Second priority: burn down non-endangered cities that we haven't built a courthouse in
+	for (int i = 0; i < RazeCandidates.size(); i++)
+	{
+		CvCity* pLoopCity = RazeCandidates.GetElement(i);
+		if (pLoopCity->IsRazing())
+			continue;
+
+		if (!pLoopCity->IsNoOccupiedUnhappiness())
+		{
+			iNumCities--;
+			iCurrentHappy -= pLoopCity->GetLocalHappiness();
+			iCurrentUnhappy -= pLoopCity->GetUnhappinessAggregated();
+
+			// Recalculate Happiness and test if we've met our goal
+			if (MOD_BALANCE_CORE_HAPPINESS)
+			{
+				iCurrentHappiness = min(200, (iCurrentHappy * 100) / max(1, iCurrentUnhappy)) / 2;
+				if (iCurrentHappiness >= iThreshold)
+					bDone = true;
+			}
+			else
+			{
+				iCurrentHappiness = iCurrentHappy - iCurrentUnhappy;
+				if (iCurrentHappiness > iThreshold)
+					bDone = true;
+			}
+
+			pLoopCity->doTask(TASK_RAZE);
+
+			if (bDone || iNumCities == 1)
+				return;
+		}
+	}
+	// Third priority: burn down endangered cities that we HAVE built a courthouse in
+	for (int i = 0; i < RazeCandidates.size(); i++)
+	{
+		CvCity* pLoopCity = RazeCandidates.GetElement(i);
+		if (pLoopCity->IsRazing())
+			continue;
+
+		if (std::find(EndangeredCities.begin(), EndangeredCities.end(), pLoopCity) != EndangeredCities.end())
+		{
+			iNumCities--;
+			iCurrentHappy -= pLoopCity->GetLocalHappiness();
+			iCurrentUnhappy -= pLoopCity->GetUnhappinessAggregated();
+
+			// Recalculate Happiness and test if we've met our goal
+			if (MOD_BALANCE_CORE_HAPPINESS)
+			{
+				iCurrentHappiness = min(200, (iCurrentHappy * 100) / max(1, iCurrentUnhappy)) / 2;
+				if (iCurrentHappiness >= iThreshold)
+					bDone = true;
+			}
+			else
+			{
+				iCurrentHappiness = iCurrentHappy - iCurrentUnhappy;
+				if (iCurrentHappiness > iThreshold)
+					bDone = true;
+			}
+
+			pLoopCity->doTask(TASK_RAZE);
+
+			if (bDone || iNumCities == 1)
+				return;
+		}
+	}
+	// Fourth priority: burn down other cities
+	for (int i = 0; i < RazeCandidates.size(); i++)
+	{
+		CvCity* pLoopCity = RazeCandidates.GetElement(i);
+		if (pLoopCity->IsRazing())
+			continue;
+
+		iNumCities--;
+		iCurrentHappy -= pLoopCity->GetLocalHappiness();
+		iCurrentUnhappy -= pLoopCity->GetUnhappinessAggregated();
+
+		// Recalculate Happiness and test if we've met our goal
+		if (MOD_BALANCE_CORE_HAPPINESS)
+		{
+			iCurrentHappiness = min(200, (iCurrentHappy * 100) / max(1, iCurrentUnhappy)) / 2;
+			if (iCurrentHappiness >= iThreshold)
+				bDone = true;
+		}
+		else
+		{
+			iCurrentHappiness = iCurrentHappy - iCurrentUnhappy;
+			if (iCurrentHappiness > iThreshold)
+				bDone = true;
+		}
+
+		pLoopCity->doTask(TASK_RAZE);
+
+		if (bDone || iNumCities == 1)
+			return;
+	}
+}
+
+int CvPlayerAI::AI_computeHappinessFromRazing(CvCity* pCity, int iCurrentHappy, int iCurrentUnhappy)
+{
+	int iCurrentHappiness = 0;
+	if (MOD_BALANCE_CORE_HAPPINESS)
+	{
+		iCurrentHappiness = min(200, (iCurrentHappy * 100) / max(1, iCurrentUnhappy)) / 2;
+	}
+	else
+	{
+		iCurrentHappiness = iCurrentHappy - iCurrentUnhappy;
+	}
+
+	iCurrentHappy -= pCity->GetLocalHappiness();
+	iCurrentUnhappy -= pCity->GetUnhappinessAggregated();
+
+	int iFutureHappiness = 0;
+	if (MOD_BALANCE_CORE_HAPPINESS)
+	{
+		iFutureHappiness = min(200, (iCurrentHappy * 100) / max(1, iCurrentUnhappy)) / 2;
+	}
+	else
+	{
+		iFutureHappiness = iCurrentHappy - iCurrentUnhappy;
+	}
+
+	return iFutureHappiness - iCurrentHappiness;
 }
 
 #if defined(MOD_BALANCE_CORE_EVENTS)

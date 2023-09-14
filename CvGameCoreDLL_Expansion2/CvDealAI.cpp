@@ -521,8 +521,8 @@ DemandResponseTypes CvDealAI::GetDemandResponse(CvDeal* pDeal)
 	// They are very far away and have no units near us (from what we can tell)? Never give in.
 	else if (eProximity <= PLAYER_PROXIMITY_FAR && eMilitaryPosture == AGGRESSIVE_POSTURE_NONE)
 		return DEMAND_RESPONSE_REFUSE_WEAK;
-	// Are we planning to war this guy ourselves? Never give in...but whether we give the weak or hostile response depends on their strength.
-	else if (eApproach == CIV_APPROACH_WAR)
+	// Are we planning to war / demand from this guy ourselves? Never give in...but whether we give the weak or hostile response depends on their strength.
+	else if (eApproach == CIV_APPROACH_WAR || pDiploAI->GetDemandTargetPlayer() == eFromPlayer)
 	{
 		if (eMilitaryStrength <= STRENGTH_AVERAGE)
 			return DEMAND_RESPONSE_REFUSE_WEAK;
@@ -2178,6 +2178,10 @@ int CvDealAI::GetCityValueForDeal(CvCity* pCity, PlayerTypes eAssumedOwner)
 	//note that it can also happen that a player pretends to buy a city they already own, just to see the appropriate price
 	CvPlayer& assumedOwner = GET_PLAYER(eAssumedOwner);
 	bool bPeaceTreatyTrade = assumedOwner.IsAtWarWith(pCity->getOwner());
+
+	// Don't buy any cities that aren't ours if we're unhappy
+	if (!bPeaceTreatyTrade && pCity->getOwner() != eAssumedOwner && pCity->getOriginalOwner() != eAssumedOwner && GET_PLAYER(eAssumedOwner).IsEmpireUnhappy())
+		return INT_MAX;
 
 	//if we already own it and trade voluntarily ...
 	if (!bPeaceTreatyTrade && pCity->getOwner() == eAssumedOwner)
