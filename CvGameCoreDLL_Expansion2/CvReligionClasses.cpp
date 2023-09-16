@@ -1210,7 +1210,7 @@ void CvGameReligions::FoundReligion(PlayerTypes ePlayer, ReligionTypes eReligion
 	CvReligion kReligion(eReligion, ePlayer, pkHolyCity, false);
 
 	// Copy over belief from your pantheon
-	BeliefTypes eBelief = GC.getGame().GetGameReligions()->GetBeliefInPantheon(kPlayer.GetID());
+	BeliefTypes eBelief = kPlayer.GetReligions()->HasCreatedPantheon() ? GC.getGame().GetGameReligions()->GetBeliefInPantheon(kPlayer.GetID()) : NO_BELIEF;
 	if (eBelief != NO_BELIEF)
 	{
 		CvReligionBeliefs beliefs = GC.getGame().GetGameReligions()->GetReligion(RELIGION_PANTHEON, ePlayer)->m_Beliefs;
@@ -7735,7 +7735,7 @@ int CvReligionAI::ScoreBelief(CvBeliefEntry* pEntry, bool bForBonus, bool bConsi
 		pLog->Msg(strOutBuf);
 	}
 
-	return iRtnValue;
+	return max(0, iRtnValue);
 }
 
 int CvReligionAI::GetValidPlotYield(CvBeliefEntry* pEntry, CvPlot* pPlot, YieldTypes iI, bool bConsiderFutureTech) const
