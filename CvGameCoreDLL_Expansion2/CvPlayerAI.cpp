@@ -372,7 +372,7 @@ void CvPlayerAI::AI_conquerCity(CvCity* pCity, bool bGift, bool bAllowSphereRemo
 	//only city on a landmass? may be strategically important
 	bool bOnlyCityOnLandmass = false;
 	CvLandmass* pLandmass = GC.getMap().getLandmassById(pCity->plot()->getLandmass());
-	if (pLandmass != NULL && pLandmass->getCitiesPerPlayer(GetID()) < 1)
+	if (pLandmass != NULL && pLandmass->getCitiesPerPlayer(GetID()) <= 1)
 	{
 		bOnlyCityOnLandmass = true;
 		if (!IsEmpireVeryUnhappy())
@@ -450,7 +450,8 @@ void CvPlayerAI::AI_conquerCity(CvCity* pCity, bool bGift, bool bAllowSphereRemo
 			return;
 		}
 
-		if (bOnlyCityOnLandmass && !IsEmpireSuperUnhappy())
+		bool bCanRevolt = IsEmpireSuperUnhappy() || (IsEmpireVeryUnhappy() && (MOD_BALANCE_CORE_HAPPINESS || GetCulture()->GetPublicOpinionUnhappiness() > 0));
+		if (bOnlyCityOnLandmass && !bCanRevolt)
 		{
 			pCity->DoCreatePuppet();
 			return;
@@ -648,26 +649,28 @@ void CvPlayerAI::AI_considerAnnex()
 
 	AI_PERF("AI-perf.csv", "AI_ considerAnnex");
 
-	// for Venice
-	if (GetPlayerTraits()->IsNoAnnexing())
+	// if our capital city is puppeted or being razed, annex and unraze it
+	// can happen if we lose our original capital
+	CvCity* pCapital = getCapitalCity();
+	if (pCapital)
 	{
-		return;
+		if (pCapital->IsRazing())
+			unraze(pCapital);
+
+		if (pCapital->IsPuppet())
+		{
+			pCapital->DoAnnex();
+			return;
+		}
 	}
 
-	// if our capital city is puppeted, annex it
-	// can happen if we lose our real capital
-	CvCity* pCapital = getCapitalCity();
-	if (pCapital && pCapital->IsPuppet())
-	{
-		pCapital->DoAnnex();
+	// for Venice
+	if (GetPlayerTraits()->IsNoAnnexing())
 		return;
-	}
 
 	// no annexing if the empire is unhappy
 	if (IsEmpireUnhappy())
-	{
 		return;
-	}
 
 	//Find the anti-occupation building
 	BuildingClassTypes eCourthouseType = NO_BUILDINGCLASS;
@@ -784,9 +787,13 @@ void CvPlayerAI::AI_considerRaze()
 
 	AI_PERF("AI-perf.csv", "AI_ considerRaze");
 
-	// Only raze when super unhappy
+	// Only raze when at risk of revolting
 	int iNumCities = getNumCities();
-	if (!IsEmpireSuperUnhappy() || iNumCities <= 1 || GetPlayerTraits()->IsNoAnnexing())
+	if (iNumCities <= 1 || GetPlayerTraits()->IsNoAnnexing())
+		return;
+
+	bool bCanRevolt = IsEmpireSuperUnhappy() || (IsEmpireVeryUnhappy() && (MOD_BALANCE_CORE_HAPPINESS || GetCulture()->GetPublicOpinionUnhappiness() > 0));
+	if (!bCanRevolt)
 		return;
 
 	int iCurrentHappiness = 0;
@@ -843,6 +850,9 @@ void CvPlayerAI::AI_considerRaze()
 
 		ValidCities.push_back(pLoopCity);
 	}
+
+	if (iNumCities <= 1)
+		return;
 
 	// Recalculate happiness to see if we still have a problem ... possible we already have enough cities burning
 	if (MOD_BALANCE_CORE_HAPPINESS)
