@@ -13813,6 +13813,10 @@ void CvGame::SpawnArchaeologySitesHistorically()
 			}
 		}
 
+		// Nowhere left to place a dig site!
+		if (aDigSiteWeights.empty())
+			return;
+
 		// sort the weight vector
 		aDigSiteWeights.StableSortItems();
 
