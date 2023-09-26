@@ -15941,7 +15941,7 @@ void CvDiplomacyAI::SelectBestApproachTowardsMajorCiv(PlayerTypes ePlayer, bool 
 	bool bApplyDeception = IsBackstabber() || bCloseToWorldConquest || IsEndgameAggressiveTo(ePlayer);
 	if (!bApplyDeception && (eOurProximity == PLAYER_PROXIMITY_NEIGHBORS || (GetPlayer()->CanCrossOcean() && eOurProximity >= PLAYER_PROXIMITY_CLOSE)))
 	{
-		if (GetDenounceWillingness() > 8 || vApproachBias[CIV_APPROACH_DECEPTIVE] > vApproachBias[CIV_APPROACH_FRIENDLY] + 1 || IsGoingForWorldConquest())
+		if (GetDenounceWillingness() > 8 || vApproachBias[CIV_APPROACH_DECEPTIVE] > vApproachBias[CIV_APPROACH_FRIENDLY] + 100 || IsGoingForWorldConquest())
 			bApplyDeception = true;
 	}
 	// Also only apply it if it'd be worth our time
@@ -17338,6 +17338,8 @@ void CvDiplomacyAI::SelectBestApproachTowardsMajorCiv(PlayerTypes ePlayer, bool 
 	////////////////////////////////////
 
 	int DifficultyModifier = 0;
+	int iMaxVictoryDispute = 0;
+	
 	if (GET_PLAYER(ePlayer).isHuman())
 		DifficultyModifier = max(GET_PLAYER(ePlayer).getHandicapInfo().getVictoryDisputePercent(), GET_PLAYER(ePlayer).getHandicapInfo().getVictoryBlockPercent());
 	else
@@ -17345,7 +17347,7 @@ void CvDiplomacyAI::SelectBestApproachTowardsMajorCiv(PlayerTypes ePlayer, bool 
 
 	if (IsCompetingForVictory() && iGameTurn > 150)
 	{
-		int iMaxVictoryDispute = max((int)GetVictoryDisputeLevel(ePlayer), (int)GetVictoryBlockLevel(ePlayer));
+		iMaxVictoryDispute = max((int)GetVictoryDisputeLevel(ePlayer), (int)GetVictoryBlockLevel(ePlayer));
 		DisputeLevelTypes eMaxVictoryDispute = (DisputeLevelTypes) iMaxVictoryDispute;
 
 		switch (eMaxVictoryDispute)
@@ -18151,7 +18153,7 @@ void CvDiplomacyAI::SelectBestApproachTowardsMajorCiv(PlayerTypes ePlayer, bool 
 
 	if (!GC.getGame().isOption(GAMEOPTION_NO_RELIGION))
 	{
-		iReligiosityScore = iFlavorReligion + GC.getEraInfo((EraTypes)iGameEra)->getDiploEmphasisReligion();
+		iReligiosityScore = max(iFlavorReligion, GC.getEraInfo((EraTypes)iGameEra)->getDiploEmphasisReligion());
 
 		if (iFlavorReligion < 5)
 		{
@@ -18295,7 +18297,7 @@ void CvDiplomacyAI::SelectBestApproachTowardsMajorCiv(PlayerTypes ePlayer, bool 
 	////////////////////////////////////
 
 	int iFlavorCulture = m_pPlayer->GetFlavorManager()->GetPersonalityFlavorForDiplomacy((FlavorTypes)GC.getInfoTypeForString("FLAVOR_CULTURE"));
-	int iIdeologueScore = iFlavorCulture + GC.getEraInfo((EraTypes)iGameEra)->getDiploEmphasisLatePolicies();
+	int iIdeologueScore = max(iFlavorCulture, GC.getEraInfo((EraTypes)iGameEra)->getDiploEmphasisLatePolicies());
 
 	if (iFlavorCulture < 5)
 	{
@@ -18378,8 +18380,8 @@ void CvDiplomacyAI::SelectBestApproachTowardsMajorCiv(PlayerTypes ePlayer, bool 
 	// ALLIANCES
 	////////////////////////////////////
 
-	int iReligionMod = iReligiosityScore / 2;
-	int iIdeologyMod = iIdeologueScore / 2;
+	int iReligionMod = iReligiosityScore;
+	int iIdeologyMod = iIdeologueScore;
 
 	// Let's play good guys versus bad guys!
 	// Good alliances
@@ -20202,9 +20204,9 @@ void CvDiplomacyAI::SelectBestApproachTowardsMajorCiv(PlayerTypes ePlayer, bool 
 	else
 		DifficultyModifier = max(GC.getGame().getHandicapInfo().getVictoryDisputePercent(), GC.getGame().getHandicapInfo().getVictoryBlockPercent());
 
-	iWarBonus *= (GetBoldness() + max((int)GetVictoryDisputeLevel(ePlayer), (int)GetVictoryBlockLevel(ePlayer))) * DifficultyModifier;
+	iWarBonus *= (GetBoldness() + iMaxVictoryDispute) * DifficultyModifier;
 	iWarBonus /= 500;
-	iHostileBonus *= (GetMeanness() + max((int)GetVictoryDisputeLevel(ePlayer), (int)GetVictoryBlockLevel(ePlayer))) * DifficultyModifier;
+	iHostileBonus *= (GetMeanness() + iMaxVictoryDispute) * DifficultyModifier;
 	iHostileBonus /= 500;
 
 	if (!bApplyDeception)
@@ -20654,13 +20656,13 @@ void CvDiplomacyAI::SelectBestApproachTowardsMajorCiv(PlayerTypes ePlayer, bool 
 	// [PART 9: PRIORITIZATION]		  //
 	//--------------------------------//
 
-	int iWarMod = vApproachBias[CIV_APPROACH_WAR] + GetBoldness();
-	int iHostileMod = vApproachBias[CIV_APPROACH_HOSTILE] + GetMeanness();
-	int iDeceptiveMod = vApproachBias[CIV_APPROACH_DECEPTIVE] + GetDenounceWillingness();
-	int iGuardedMod = vApproachBias[CIV_APPROACH_GUARDED] + (11 - GetForgiveness());
-	int iAfraidMod = vApproachBias[CIV_APPROACH_AFRAID] + (11 - GetBoldness());
-	int iFriendlyMod = vApproachBias[CIV_APPROACH_FRIENDLY] + GetDoFWillingness();
-	int iNeutralMod = vApproachBias[CIV_APPROACH_NEUTRAL] + GetDiploBalance();
+	int iWarMod = vApproachBias[CIV_APPROACH_WAR]/100 + GetBoldness();
+	int iHostileMod = vApproachBias[CIV_APPROACH_HOSTILE]/100 + GetMeanness();
+	int iDeceptiveMod = vApproachBias[CIV_APPROACH_DECEPTIVE]/100 + GetDenounceWillingness();
+	int iGuardedMod = vApproachBias[CIV_APPROACH_GUARDED]/100 + (11 - GetForgiveness());
+	int iAfraidMod = vApproachBias[CIV_APPROACH_AFRAID]/100 + (11 - GetBoldness());
+	int iFriendlyMod = vApproachBias[CIV_APPROACH_FRIENDLY]/100 + GetDoFWillingness();
+	int iNeutralMod = vApproachBias[CIV_APPROACH_NEUTRAL]/100 + GetDiploBalance();
 
 	// Prioritize our approaches to avoid adopting the same approach towards too many players and allow more variance/strategy
 	// Only do this on the second pass of the function, as we've already recorded the most recent values for this turn
