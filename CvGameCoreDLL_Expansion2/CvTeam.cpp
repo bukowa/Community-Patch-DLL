@@ -1374,11 +1374,11 @@ void CvTeam::DoDeclareWar(PlayerTypes eOriginatingPlayer, bool bAggressor, TeamT
 	}
 
 	//first cancel open borders and other diplomatic agreements
-	GET_TEAM(eTeam).SetAllowsOpenBordersToTeam(m_eID, false);
-	SetAllowsOpenBordersToTeam(eTeam, false);
 	GC.getGame().GetGameDeals().DoCancelDealsBetweenTeams(GetID(), eTeam);
 	CloseEmbassyAtTeam(eTeam);
 	GET_TEAM(eTeam).CloseEmbassyAtTeam(m_eID);
+	SetAllowsOpenBordersToTeam(eTeam, false);
+	GET_TEAM(eTeam).SetAllowsOpenBordersToTeam(m_eID, false);
 	CancelResearchAgreement(eTeam);
 	GET_TEAM(eTeam).CancelResearchAgreement(m_eID);
 	EvacuateDiplomatsAtTeam(eTeam);
@@ -4350,12 +4350,7 @@ void CvTeam::CloseEmbassyAtTeam(TeamTypes eIndex)
 	CvAssertMsg(eIndex < MAX_TEAMS, "eIndex is expected to be within maximum bounds (invalid Index)");
 
 	SetHasEmbassyAtTeam(eIndex, false);
-	SetAllowsOpenBordersToTeam(m_eID, false);
-	SetHasDefensivePact(m_eID, false);
-	GET_TEAM(eIndex).SetHasDefensivePact(m_eID, false);
-
-	//SetHasResearchAgreement(m_eID, false);
-	//GET_TEAM(eIndex).SetHasResearchAgreement(m_eID, false);
+	SetHasDefensivePact(eIndex, false);
 }
 
 //	--------------------------------------------------------------------------------
@@ -9220,9 +9215,11 @@ void CvTeam::DoEndVassal(TeamTypes eTeam, bool bPeaceful, bool bSuppressNotifica
 		}
 	}
 
-	//Break open borders
+	//Break embassy and open borders
+	CloseEmbassyAtTeam(eTeam);
+	GET_TEAM(eTeam).CloseEmbassyAtTeam(m_eID);
 	SetAllowsOpenBordersToTeam(eTeam, false);
-	GET_TEAM(eTeam).SetAllowsOpenBordersToTeam(GetID(), false);
+	GET_TEAM(eTeam).SetAllowsOpenBordersToTeam(m_eID, false);
 
 	setVassal(eTeam, false);
 
@@ -9233,7 +9230,14 @@ void CvTeam::DoEndVassal(TeamTypes eTeam, bool bPeaceful, bool bSuppressNotifica
 	for (int iPlayerLoop = 0; iPlayerLoop < MAX_MAJOR_CIVS; iPlayerLoop++)
 	{
 		PlayerTypes eLoopPlayer = (PlayerTypes) iPlayerLoop;
-		GET_PLAYER(eLoopPlayer).GetDiplomacyAI()->DoUpdateConquestStats();
+		if (GET_PLAYER(eLoopPlayer).isAlive())
+		{
+			GET_PLAYER(eLoopPlayer).GetDiplomacyAI()->DoUpdateConquestStats();
+
+			// Disable warmongering penalties for the upcoming DoW...declaring independence isn't warmongering
+			if (!bPeaceful)
+				GET_PLAYER(eLoopPlayer).GetDiplomacyAI()->SetIgnoreWarmonger(true);
+		}
 	}
 
 	// Not peaceful end of vassalage? Declare war!
@@ -9252,10 +9256,17 @@ void CvTeam::DoEndVassal(TeamTypes eTeam, bool bPeaceful, bool bSuppressNotifica
 	for (int iPlayerLoop = 0; iPlayerLoop < MAX_MAJOR_CIVS; iPlayerLoop++)
 	{
 		PlayerTypes eLoopPlayer = (PlayerTypes) iPlayerLoop;
-		// Update Happiness for all players
-		if (GET_PLAYER(eLoopPlayer).isAlive() && GET_PLAYER(eLoopPlayer).getTeam() == GetID())
+		if (GET_PLAYER(eLoopPlayer).isAlive())
 		{
-			GET_PLAYER(eLoopPlayer).CalculateNetHappiness();
+			// Turn warmongering back on
+			if (!bPeaceful)
+				GET_PLAYER(eLoopPlayer).GetDiplomacyAI()->SetIgnoreWarmonger(false);
+
+			// Update Happiness for all players
+			if (GET_PLAYER(eLoopPlayer).getTeam() == GetID() || GET_PLAYER(eLoopPlayer).getTeam() == eTeam)
+			{
+				GET_PLAYER(eLoopPlayer).CalculateNetHappiness();
+			}
 		}
 	}
 

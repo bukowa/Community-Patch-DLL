@@ -5602,7 +5602,7 @@ void CvDiplomacyAI::ChangeOtherPlayerNumMinorsAttacked(PlayerTypes ePlayer, int 
 {
 	if (ePlayer < 0 || ePlayer >= MAX_MAJOR_CIVS) return;
 
-	// Flag has been set to ignore warmongering? (Set when this player has purchased third party war.)
+	// Flag has been set to ignore warmongering? (Set when this player has purchased third party war, or a declaration of independence occurs.)
 	if (IsIgnoreWarmonger())
 		return;
 
@@ -5663,7 +5663,7 @@ void CvDiplomacyAI::ChangeOtherPlayerNumMajorsAttacked(PlayerTypes ePlayer, int 
 {
 	if (ePlayer < 0 || ePlayer >= MAX_MAJOR_CIVS) return;
 
-	// Flag has been set to ignore warmongering? (Set when this player has purchased third party war.)
+	// Flag has been set to ignore warmongering? (Set when this player has purchased third party war, or a declaration of independence occurs.)
 	if (IsIgnoreWarmonger())
 		return;
 
@@ -44297,9 +44297,6 @@ void CvDiplomacyAI::DoDenouncePlayer(PlayerTypes ePlayer)
 		GET_PLAYER(ePlayer).GetDiplomacyAI()->ChangeRecentAssistValue(eMyPlayer, 300);
 
 		GET_PLAYER(ePlayer).GetDiplomacyAI()->SetDoFBroken(eMyPlayer, true, true);
-
-		GET_TEAM(GET_PLAYER(eMyPlayer).getTeam()).SetHasDefensivePact(GET_PLAYER(ePlayer).getTeam(), false);
-		GET_TEAM(GET_PLAYER(ePlayer).getTeam()).SetHasDefensivePact(GET_PLAYER(eMyPlayer).getTeam(), false);
 	}
 	
 	// Update opinions and approaches
